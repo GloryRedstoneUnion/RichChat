@@ -1,0 +1,49 @@
+pluginManagement {
+    repositories {
+        // 阿里云 Gradle 插件门户镜像
+        maven {
+            name = 'AliyunGradlePluginPortal'
+            url = 'https://maven.aliyun.com/repository/gradle-plugin'
+        }
+        // 阿里云公共仓库
+        maven {
+            name = 'AliyunPublic'
+            url = 'https://maven.aliyun.com/repository/public'
+        }
+        // Fabric 官方仓库（保留作为兜底）
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        // 阿里云公共仓库（首选）
+        maven {
+            name = 'AliyunPublic'
+            url = 'https://maven.aliyun.com/repository/public'
+        }
+        // 阿里云 Google 仓库镜像
+        maven {
+            name = 'AliyunGoogle'
+            url = 'https://maven.aliyun.com/repository/google'
+        }
+        // 腾讯云 Maven（备选）
+        maven {
+            name = 'TencentCloud'
+            url = 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/'
+        }
+        // Fabric 官方仓库
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'RichChat'

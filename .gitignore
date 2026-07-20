@@ -1,0 +1,40 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.~snap
+.aps
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Fabric Loom 缓存
+loom-cache/
+
+# 其他
+*.log
+*.tmp
+*.bak
+
+# Loom 构建副产物 (会被复制到根目录)
+/client-*-refmap.json
+/richchat.client.mixins.json
+/richchat.mixins.json
