@@ -62,4 +62,17 @@ class RendererTest {
         assertNull(RichChatColors.normalize("#FFF"));
         assertNull(RichChatColors.normalize("#GGGGGG"));
     }
+
+    @Test
+    void defaultsFollowVsCodePaletteWithDistinctHeadingColors() {
+        assertEquals("#D4D4D4", RichChatColors.defaultValue("plain"));
+        assertEquals("#CE9178", RichChatColors.defaultValue("codeBlock"));
+        assertEquals("#3794FF", RichChatColors.defaultValue("link"));
+        assertEquals("#569CD6", RichChatColors.defaultValue("heading1"));
+        assertEquals("#4EC9B0", RichChatColors.defaultValue("heading2"));
+        assertEquals("#DCDCAA", RichChatColors.defaultValue("heading3"));
+        assertEquals("#C586C0", RichChatColors.defaultValue("heading4"));
+        assertEquals("#9CDCFE", RichChatColors.defaultValue("heading5"));
+        assertEquals("#CE9178", RichChatColors.defaultValue("heading6"));
+    }
 }

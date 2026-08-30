@@ -17,24 +17,25 @@ public final class RichChatColors {
     private static final Map<String, String> DEFAULTS = new LinkedHashMap<>();
 
     static {
-        DEFAULTS.put("plain", "#FFFFFF");
+        // VS Code Dark+-inspired defaults, with distinct heading levels.
+        DEFAULTS.put("plain", "#D4D4D4");
         DEFAULTS.put("bold", "#FFFFFF");
-        DEFAULTS.put("italic", "#FFFFFF");
-        DEFAULTS.put("strikethrough", "#FFFFFF");
-        DEFAULTS.put("list", "#FFFFFF");
-        DEFAULTS.put("inlineCode", "#D0D0D0");
-        DEFAULTS.put("codeBlock", "#D0D0D0");
-        DEFAULTS.put("link", "#55FFFF");
-        DEFAULTS.put("heading1", "#5555FF");
-        DEFAULTS.put("heading2", "#55FF55");
-        DEFAULTS.put("heading3", "#FFFF55");
-        DEFAULTS.put("heading4", "#55FFFF");
-        DEFAULTS.put("heading5", "#FF55FF");
-        DEFAULTS.put("heading6", "#FF5555");
-        DEFAULTS.put("quote", "#AAAAAA");
-        DEFAULTS.put("latex", "#FFFFFF");
-        DEFAULTS.put("tableHeader", "#FFFFFF");
-        DEFAULTS.put("tableBody", "#FFFFFF");
+        DEFAULTS.put("italic", "#D4D4D4");
+        DEFAULTS.put("strikethrough", "#808080");
+        DEFAULTS.put("list", "#D4D4D4");
+        DEFAULTS.put("inlineCode", "#CE9178");
+        DEFAULTS.put("codeBlock", "#CE9178");
+        DEFAULTS.put("link", "#3794FF");
+        DEFAULTS.put("heading1", "#569CD6");
+        DEFAULTS.put("heading2", "#4EC9B0");
+        DEFAULTS.put("heading3", "#DCDCAA");
+        DEFAULTS.put("heading4", "#C586C0");
+        DEFAULTS.put("heading5", "#9CDCFE");
+        DEFAULTS.put("heading6", "#CE9178");
+        DEFAULTS.put("quote", "#6A9955");
+        DEFAULTS.put("latex", "#B5CEA8");
+        DEFAULTS.put("tableHeader", "#4EC9B0");
+        DEFAULTS.put("tableBody", "#D4D4D4");
     }
 
     private RichChatColors() {
