@@ -1,5 +1,11 @@
 # RichChat
 
+## 1.2.0
+
+- 使用 Minecraft 原生 `uniform` 等宽字体对齐代码块和 Markdown 表格。
+- 采用 VS Code 风格的代码、链接、标题和公式颜色，并补充颜色命令提示。
+- 增加 `\max`、`\min`、`\lim` 和三角函数等常见 LaTeX 运算符。
+
 > Minecraft Fabric 模组 —— 在聊天栏中渲染 **Markdown** 与 **LaTeX**，鼠标悬停查看原始源码。
 
 ## 项目简介
@@ -9,7 +15,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 ### 核心特性
 
 - **Markdown 渲染**：粗体、斜体、删除线、行内代码、链接、标题、列表、引用、表格、代码块
-- **LaTeX 渲染**：将常见 LaTeX 公式转为 Unicode 近似字符（上下标、希腊字母、数学符号等）
+- **LaTeX 渲染**：将常见 LaTeX 公式转为 Unicode 近似字符（上下标、希腊字母、数学符号和常见运算符）
 - **悬停看源码**：对每条已渲染消息悬停时显示其原始未渲染文本
 - **多行块支持**：跨消息累积多行代码块、多行 LaTeX 块（`$$...$$`）、Markdown 表格
 - **嵌套代码块**：外层 ```` ```markdown ```` 代码块内可包含 ```` ```python ```` 内层代码块，正确匹配闭合
@@ -33,7 +39,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 
 ### 方式一：使用预构建 jar
 
-1. 下载 `RichChat-1.1.0.jar`
+1. 下载 `RichChat-1.2.0.jar`
 2. 将其放入 `.minecraft/mods/` 目录
 3. 确保 `fabric-api-0.92.2+1.20.1.jar` 也已在 mods 目录
 4. 启动 Minecraft 1.20.1（Fabric Loader）
@@ -44,7 +50,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 git clone <repo-url>
 cd RichChat
 ./gradlew build
-# 产物: build/libs/RichChat-1.1.0.jar
+# 产物: build/libs/RichChat-1.2.0.jar
 ```
 
 ## 使用方法
@@ -162,15 +168,15 @@ $$
 | `**text**` | **粗体** |
 | `*text*` | *斜体* |
 | `~~text~~` | ~~删除线~~ |
-| `` `code` `` | 深灰色等宽代码 |
+| `` `code` `` | VS Code 风格颜色 + Minecraft 等宽代码 |
 | `[text](url)` | 可点击链接 + 下划线 |
 | `# 标题` | 蓝色粗体 |
 | `## 标题` | 绿色粗体 |
 | `### 标题` | 黄色粗体 |
 | `- item` | • 前缀列表 |
 | `> quote` | 灰色缩进引用 |
-| `` ```lang ... ``` `` | 多行代码块 |
-| `\| table \|` | 对齐表格 |
+| `` ```lang ... ``` `` | VS Code 风格颜色 + 等宽多行代码块 |
+| `\| table \|` | 等宽字体对齐表格 |
 
 ### LaTeX 支持范围
 
@@ -308,7 +314,7 @@ org.gradle.java.home=C:/Program Files/Java/jdk-17
 | `**粗体** *斜体* \`代码\`` | 粗体 + 斜体 + 深灰代码 |
 | `$x^2 + \frac{1}{2}$` | `x² + 1/2` |
 | `$$\sum_{i=1}^{n} \frac{1}{i^2}$$` | `Σ` 块级公式 |
-| `` ```python\ndef greet():\n    pass\n``` `` | 多行深灰代码块 |
+| `` ```python\ndef greet():\n    pass\n``` `` | VS Code 风格等宽代码块 |
 | `\| a \| b \|\n\|:---:\|\n\| 1 \| 2 \|` | 对齐表格 |
 | `\sqrt[n]{x}` | `ⁿ√x` |
 | `<player> > hello` | `>` 不被吞（聊天前缀识别） |

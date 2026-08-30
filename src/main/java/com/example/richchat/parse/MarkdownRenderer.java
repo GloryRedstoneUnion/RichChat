@@ -3,6 +3,7 @@ package com.example.richchat.parse;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import com.example.richchat.config.RichChatConfig;
 
 import java.util.regex.Matcher;
@@ -34,6 +35,9 @@ import java.util.regex.Pattern;
  * 区分代码, 兼容中英文.</p>
  */
 public final class MarkdownRenderer {
+
+    /** Minecraft's bundled fixed-width font, used for code so glyphs line up in chat. */
+    private static final Identifier CODE_FONT = Identifier.of("minecraft", "uniform");
 
     /** URL 正则. */
     private static final Pattern URL_PATTERN =
@@ -80,24 +84,26 @@ public final class MarkdownRenderer {
 
             // 代码块开始 / 结束
             String trimmedLine = line.trim();
-            if (trimmedLine.startsWith("```")) {
-                int sameLineClose = trimmedLine.indexOf("```", 3);
+            if (isFenceLine(trimmedLine)) {
+                int sameLineClose = findFenceClose(trimmedLine, 3);
                 if (!inCodeBlock && sameLineClose > 3) {
-                    result.append(renderInlineCode(trimmedLine.substring(3, sameLineClose), baseStyle));
+                    result.append(renderCodeBlock(trimmedLine.substring(3, sameLineClose)));
                     if (lineIdx < lines.length - 1) result.append(Text.literal("\n"));
                     continue;
                 }
-                if (inCodeBlock) {
+                if (inCodeBlock && isClosingFence(trimmedLine)) {
                     String raw = codeBlock.toString();
-                    int firstLineEnd = raw.indexOf('\n');
-                    String content = firstLineEnd >= 0 ? raw.substring(firstLineEnd + 1) : raw;
+                    String content = stripFenceLanguage(raw);
                     result.append(renderCodeBlock(content));
                     codeBlock.setLength(0);
                     inCodeBlock = false;
-                } else {
+                } else if (!inCodeBlock) {
                     inCodeBlock = true;
                     codeBlock.setLength(0);
                     codeBlock.append(line).append('\n');
+                } else {
+                    codeBlock.append(line);
+                    if (lineIdx < lines.length - 1) codeBlock.append('\n');
                 }
                 if (!inCodeBlock && lineIdx < lines.length - 1) {
                     result.append(Text.literal("\n"));
@@ -123,7 +129,9 @@ public final class MarkdownRenderer {
 
         // 未闭合代码块: 作为代码内容输出
         if (inCodeBlock) {
-            result.append(Text.literal(codeBlock.toString()).setStyle(baseStyle));
+            // Keep the complete source, including the opening fence, when no closing
+            // fence was received. This avoids swallowing text after a malformed block.
+            result.append(Text.literal(codeBlock.toString()).setStyle(baseStyle.withFont(CODE_FONT)));
         }
 
         return result;
@@ -295,7 +303,7 @@ public final class MarkdownRenderer {
      * 该字体对 ASCII / 中文显示为乱码).</p>
      */
     private static MutableText renderInlineCode(String code, Style baseStyle) {
-        Style codeStyle = semanticStyle(baseStyle, "inlineCode");
+        Style codeStyle = semanticStyle(baseStyle, "inlineCode").withFont(CODE_FONT);
         // 在代码片段中检测 URL
         Matcher m = URL_PATTERN.matcher(code);
         MutableText result = Text.empty();
@@ -330,8 +338,27 @@ public final class MarkdownRenderer {
      * @return 渲染后的 Text.
      */
     public static MutableText renderCodeBlock(String content) {
-        Style codeStyle = semanticStyle(Style.EMPTY, "codeBlock");
+        Style codeStyle = semanticStyle(Style.EMPTY, "codeBlock").withFont(CODE_FONT);
         return Text.literal(content).setStyle(codeStyle);
+    }
+
+    private static boolean isFenceLine(String trimmedLine) {
+        return trimmedLine.startsWith("```");
+    }
+
+    private static boolean isClosingFence(String trimmedLine) {
+        return trimmedLine.equals("```");
+    }
+
+    private static int findFenceClose(String line, int start) {
+        int close = line.indexOf("```", start);
+        return close >= 0 ? close : -1;
+    }
+
+    private static String stripFenceLanguage(String raw) {
+        int firstLineEnd = raw.indexOf('\n');
+        if (firstLineEnd < 0) return raw;
+        return raw.substring(firstLineEnd + 1);
     }
 
     /**
@@ -392,6 +419,15 @@ public final class MarkdownRenderer {
                 continue;
             }
             if (text.startsWith(marker, i)) {
+                // A run such as *** closes an inner italic span first and the
+                // surrounding bold span second. Choose the trailing pair for
+                // the bold matcher so recursive parsing sees the inner span.
+                if (marker.equals("**") && c == '*') {
+                    int runEnd = i;
+                    while (runEnd < text.length() && text.charAt(runEnd) == '*') runEnd++;
+                    int runLength = runEnd - i;
+                    if ((runLength & 1) == 1 && runLength >= 3) return runEnd - 2;
+                }
                 return i;
             }
             i++;

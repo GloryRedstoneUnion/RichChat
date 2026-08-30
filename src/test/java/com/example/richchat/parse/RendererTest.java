@@ -19,6 +19,8 @@ class RendererTest {
     @Test
     void latexHandlesDelimitersAndMalformedInput() {
         assertEquals("x² + 1/2", LatexUnicodeRenderer.render("$x^2 + \\frac{1}{2}$"));
+        assertEquals("D = max(0, h - 3)",
+                LatexUnicodeRenderer.render("$D = \\max(0, h - 3)$"));
         assertEquals("Σ", LatexUnicodeRenderer.render("$$\\sum$$"));
         assertEquals("¬ x", LatexUnicodeRenderer.render("\\neg x"));
         assertEquals("$x^2", LatexUnicodeRenderer.render("\\$x^2"));
@@ -48,6 +50,27 @@ class RendererTest {
             return java.util.Optional.empty();
         }, Style.EMPTY);
         assertTrue(bold[0]);
+    }
+
+    @Test
+    void markdownKeepsNestedStylesAndEscapedMarkers() {
+        Text rendered = MarkdownRenderer.render("**bold *and italic*** \\*literal\\* [link](https://example.com)");
+        assertEquals("bold and italic *literal* link", rendered.getString());
+        assertTrue(rendered.getString().contains("literal*"));
+        final boolean[] sawBoldItalic = {false};
+        rendered.visit((style, string) -> {
+            if (style.isBold() && style.isItalic()) sawBoldItalic[0] = true;
+            return java.util.Optional.empty();
+        }, Style.EMPTY);
+        assertTrue(sawBoldItalic[0]);
+    }
+
+    @Test
+    void markdownFencesOnlyCloseOnBareFenceLine() {
+        Text rendered = MarkdownRenderer.render("```java\n```python\nreturn 1;\n```\nend");
+        assertTrue(rendered.getString().contains("```python"));
+        assertTrue(rendered.getString().contains("return 1;"));
+        assertTrue(rendered.getString().endsWith("end"));
     }
 
     @Test
@@ -106,6 +129,20 @@ class RendererTest {
         String[] rows = rendered.getString().split("\\n", -1);
         int lineWidth = TableRenderer.displayWidth(rows[0]);
         for (String row : rows) assertEquals(lineWidth, TableRenderer.displayWidth(row), row);
+    }
+
+    @Test
+    void tableUsesUniformMinecraftFontForEveryCell() {
+        Text rendered = TableRenderer.render(List.of(
+                "| Name | Value |",
+                "|---|---|",
+                "| x | 42 |"));
+        final boolean[] allUniform = {true};
+        rendered.visit((style, string) -> {
+            if (!string.equals("\n") && !"minecraft:uniform".equals(String.valueOf(style.getFont()))) allUniform[0] = false;
+            return java.util.Optional.empty();
+        }, Style.EMPTY);
+        assertTrue(allUniform[0]);
     }
 
     @Test

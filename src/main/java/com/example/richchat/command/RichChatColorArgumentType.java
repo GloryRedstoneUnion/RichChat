@@ -5,6 +5,8 @@ import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.Message;
+import com.mojang.brigadier.LiteralMessage;
 import net.minecraft.command.CommandSource;
 import net.minecraft.text.Text;
 
@@ -69,6 +71,26 @@ public final class RichChatColorArgumentType implements ArgumentType<String> {
                 ? java.util.stream.Stream.concat(Arrays.stream(RichChatColors.CATEGORIES), java.util.stream.Stream.of("all"))
                 .toArray(String[]::new)
                 : RichChatColors.CATEGORIES;
-        return CommandSource.suggestMatching(values, builder);
+        String remaining = builder.getRemaining().toLowerCase(java.util.Locale.ROOT);
+        for (String value : values) {
+            if (value.toLowerCase(java.util.Locale.ROOT).startsWith(remaining)) {
+                Message tooltip = new LiteralMessage("颜色类别: " + value);
+                builder.suggest(value, tooltip);
+            }
+        }
+        return builder.buildFuture();
+    }
+
+    /** Suggestions for the value argument keep the format discoverable in the chat input. */
+    public static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestHexValues(
+            com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+        String remaining = builder.getRemaining();
+        String[] examples = {"#FFFFFF", "#D4D4D4", "#569CD6", "#CE9178"};
+        for (String example : examples) {
+            if (example.startsWith(remaining.toUpperCase(java.util.Locale.ROOT))) {
+                builder.suggest(example, new LiteralMessage("六位十六进制颜色"));
+            }
+        }
+        return builder.buildFuture();
     }
 }

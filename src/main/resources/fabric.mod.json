@@ -3,7 +3,7 @@
   "id": "richchat",
   "version": "${version}",
   "name": "RichChat",
-  "description": "在 Minecraft 聊天栏中渲染 Markdown 与 LaTeX 公式 (Unicode 近似), 并通过悬停查看原始源码.",
+  "description": "在 Minecraft 原生聊天栏中以 VS Code 风格渲染 Markdown 与 LaTeX 公式，并通过悬停查看原始源码.",
   "authors": [
     "RichChat"
   ],

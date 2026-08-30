@@ -64,9 +64,11 @@ public final class RichChatCommand {
                                                         .suggestCategories(context, builder, true))
                                                 .executes(RichChatCommand::resetColor)))
                                 .then(ClientCommandManager.argument("category", RichChatColorArgumentType.category())
-                                        .suggests((context, builder) -> RichChatColorArgumentType
-                                                .suggestCategories(context, builder, false))
-                                        .then(ClientCommandManager.argument("value", RichChatColorArgumentType.hex())
+                                                .suggests((context, builder) -> RichChatColorArgumentType
+                                                        .suggestCategories(context, builder, false))
+                                                .then(ClientCommandManager.argument("value", RichChatColorArgumentType.hex())
+                                                .suggests((context, builder) -> RichChatColorArgumentType
+                                                        .suggestHexValues(builder))
                                                 .executes(RichChatCommand::setColor))))
         );
         RichChatMod.LOGGER.info("[RichChat] 命令 /{} 已注册.", ROOT);
@@ -122,7 +124,8 @@ public final class RichChatCommand {
 
     private static int colors(CommandContext<FabricClientCommandSource> ctx) {
         RichChatConfig cfg = RichChatConfig.INSTANCE;
-        Text msg = Text.literal("[RichChat] 颜色:").formatted(Formatting.AQUA);
+        Text msg = Text.literal("[RichChat] 颜色 (使用 /richchat color <category> <#RRGGBB>):")
+                .formatted(Formatting.AQUA);
         for (String category : RichChatColors.CATEGORIES) {
             msg = msg.copy().append(Text.literal("\n  " + category + ": " + cfg.getColorHex(category))
                     .formatted(Formatting.WHITE));
@@ -136,7 +139,8 @@ public final class RichChatCommand {
         String value = StringArgumentType.getString(ctx, "value");
         RichChatConfig cfg = RichChatConfig.INSTANCE;
         if (!cfg.setColorHex(category, value)) {
-            ctx.getSource().sendError(Text.literal("用法: /richchat color <category> <#RRGGBB>"));
+            ctx.getSource().sendError(Text.literal("用法: /richchat color <category> <#RRGGBB>")
+                    .formatted(Formatting.RED));
             return 0;
         }
         cfg.save();
@@ -152,7 +156,8 @@ public final class RichChatCommand {
         if ("all".equalsIgnoreCase(category)) {
             for (String name : RichChatColors.CATEGORIES) cfg.resetColor(name);
         } else if (!cfg.resetColor(category)) {
-            ctx.getSource().sendError(Text.literal("未知颜色类别: " + category));
+            ctx.getSource().sendError(Text.literal("未知颜色类别: " + category)
+                    .formatted(Formatting.RED));
             return 0;
         }
         cfg.save();

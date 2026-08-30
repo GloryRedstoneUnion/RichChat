@@ -165,6 +165,32 @@ public final class LatexUnicodeRenderer {
         SYMBOLS.put("\\parallel", "∥");
         SYMBOLS.put("\\sqrt", "√");
 
+        // Named operators. These are rendered as upright text, matching the
+        // way VS Code/KaTeX displays common math operators instead of leaking
+        // the command's leading backslash into chat.
+        SYMBOLS.put("\\max", "max");
+        SYMBOLS.put("\\min", "min");
+        SYMBOLS.put("\\sup", "sup");
+        SYMBOLS.put("\\inf", "inf");
+        SYMBOLS.put("\\lim", "lim");
+        SYMBOLS.put("\\limsup", "lim sup");
+        SYMBOLS.put("\\liminf", "lim inf");
+        SYMBOLS.put("\\sin", "sin");
+        SYMBOLS.put("\\cos", "cos");
+        SYMBOLS.put("\\tan", "tan");
+        SYMBOLS.put("\\cot", "cot");
+        SYMBOLS.put("\\sec", "sec");
+        SYMBOLS.put("\\csc", "csc");
+        SYMBOLS.put("\\arcsin", "arcsin");
+        SYMBOLS.put("\\arccos", "arccos");
+        SYMBOLS.put("\\arctan", "arctan");
+        SYMBOLS.put("\\log", "log");
+        SYMBOLS.put("\\ln", "ln");
+        SYMBOLS.put("\\exp", "exp");
+        SYMBOLS.put("\\det", "det");
+        SYMBOLS.put("\\gcd", "gcd");
+        SYMBOLS.put("\\Pr", "Pr");
+
         // 上标
         SUPERSCRIPT.put('0', '⁰');
         SUPERSCRIPT.put('1', '¹');

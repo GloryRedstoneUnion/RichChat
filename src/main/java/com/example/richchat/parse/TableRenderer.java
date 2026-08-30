@@ -3,6 +3,7 @@ package com.example.richchat.parse;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import com.example.richchat.config.RichChatConfig;
 
 import java.util.ArrayList;
@@ -34,6 +35,9 @@ import java.util.Optional;
  * 然后再做对齐填充. 对齐宽度按渲染后的 Unicode 显示宽度计算.</p>
  */
 public final class TableRenderer {
+
+    /** Fixed-width font supplied by Minecraft; proportional glyphs cannot align a text table. */
+    private static final Identifier TABLE_FONT = Identifier.of("minecraft", "uniform");
 
     /** 单元格对齐方式. */
     private enum Alignment { LEFT, CENTER, RIGHT }
@@ -89,7 +93,9 @@ public final class TableRenderer {
             for (int c = 0; c < maxCols; c++) {
                 String cell = c < row.length ? row[c] : "";
                 // 渲染单元格内容 (LaTeX + Markdown)
-                Text rendered = ChatParser.renderSource(cell);
+                // GFM cells are single-line blocks. Normalize accidental line
+                // breaks before measuring so one cell cannot split the HUD row.
+                Text rendered = ChatParser.renderSource(cell.replace('\n', ' ').replace('\r', ' '));
                 cellTexts[r][c] = applyBaseColor(rendered, r == 0 ? "tableHeader" : "tableBody");
                 int w = visibleLength(rendered);
                 cellWidths[r][c] = w;
@@ -102,7 +108,7 @@ public final class TableRenderer {
 
         // 表头 (加粗)
         result.append(renderRow(cellTexts[0], cellWidths[0], aligns, colWidths, true));
-        result.append(Text.literal("\n"));
+        result.append(Text.literal("\n").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
 
         // 分隔线
         result.append(renderSeparator(aligns, colWidths));
@@ -112,7 +118,7 @@ public final class TableRenderer {
         for (int i = 2; i < rowCount; i++) {
             result.append(renderRow(cellTexts[i], cellWidths[i], aligns, colWidths, false));
             if (i < rowCount - 1) {
-                result.append(Text.literal("\n"));
+                result.append(Text.literal("\n").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
             }
         }
 
@@ -199,8 +205,9 @@ public final class TableRenderer {
     private static Text renderRow(Text[] cellTexts, int[] cellWidths,
                                   Alignment[] aligns, int[] colWidths, boolean bold) {
         MutableText row = Text.empty();
-        Style pipeStyle = bold ? Style.EMPTY.withBold(true) : Style.EMPTY;
-        Style padStyle = Style.EMPTY;
+        Style pipeStyle = Style.EMPTY.withFont(TABLE_FONT);
+        if (bold) pipeStyle = pipeStyle.withBold(true);
+        Style padStyle = Style.EMPTY.withFont(TABLE_FONT);
         row.append(Text.literal("|").setStyle(pipeStyle));
         for (int c = 0; c < colWidths.length; c++) {
             Text cellText = c < cellTexts.length ? cellTexts[c] : Text.empty();
@@ -246,7 +253,8 @@ public final class TableRenderer {
         MutableText result = Text.empty();
         net.minecraft.text.TextColor color = RichChatConfig.INSTANCE.getColor(category);
         text.visit((style, string) -> {
-            result.append(Text.literal(string).setStyle(color == null ? style : style.withColor(color)));
+            Style cellStyle = color == null ? style : style.withColor(color);
+            result.append(Text.literal(string).setStyle(cellStyle.withFont(TABLE_FONT)));
             return Optional.empty();
         }, Style.EMPTY);
         return result;
@@ -257,11 +265,11 @@ public final class TableRenderer {
      */
     private static Text renderSeparator(Alignment[] aligns, int[] colWidths) {
         MutableText row = Text.empty();
-        row.append(Text.literal("|"));
+        row.append(Text.literal("|").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
         for (int c = 0; c < colWidths.length; c++) {
             String sep = makeSeparator(colWidths[c], aligns[c]);
-            row.append(Text.literal(" " + sep + " "));
-            row.append(Text.literal("|"));
+            row.append(Text.literal(" " + sep + " ").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
+            row.append(Text.literal("|").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
         }
         return row;
     }
@@ -353,7 +361,21 @@ public final class TableRenderer {
         if (s == null || s.isEmpty()) return false;
         String t = s.trim();
         if (t.startsWith("```") || t.startsWith("$$")) return false;
-        return t.contains("|");
+        int pipes = 0;
+        boolean escaped = false;
+        for (int i = 0; i < t.length(); i++) {
+            char c = t.charAt(i);
+            if (c == '\\' && !escaped) {
+                escaped = true;
+                continue;
+            }
+            if (c == '|' && !escaped) pipes++;
+            escaped = false;
+        }
+        // A Markdown table must have at least two cells. Requiring one
+        // unescaped pipe avoids capturing ordinary prose containing a literal
+        // pipe while still accepting rows without leading/trailing pipes.
+        return pipes >= 1;
     }
 
     /**
