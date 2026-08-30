@@ -190,7 +190,8 @@ public final class MarkdownRenderer {
             char c = text.charAt(i);
 
             // 转义
-            if (c == '\\' && i + 1 < text.length()) {
+            if (c == '\\' && i + 1 < text.length()
+                    && isEscapableMarkdownChar(text.charAt(i + 1))) {
                 plain.append(text.charAt(i + 1));
                 i += 2;
                 continue;
@@ -371,6 +372,10 @@ public final class MarkdownRenderer {
     private static Style semanticStyle(Style baseStyle, String category) {
         net.minecraft.text.TextColor color = RichChatConfig.INSTANCE.getColor(category);
         return color == null ? baseStyle : baseStyle.withColor(color);
+    }
+
+    private static boolean isEscapableMarkdownChar(char c) {
+        return "\\`*_{}[]()#+-.!>|~".indexOf(c) >= 0;
     }
 
     /**

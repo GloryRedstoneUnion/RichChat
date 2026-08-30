@@ -56,6 +56,23 @@ class RendererTest {
     }
 
     @Test
+    void tableRendersCommonLatexCommandsAndKeepsColumnsAligned() {
+        Text rendered = TableRenderer.render(List.of(
+                "| 物理量 | 符号 | LaTeX 表示 | 常用单位 | 状态说明 |",
+                "|:---:|:---:|:---:|:---:|:---:|",
+                "| 实体质量 | m | m | \\text{kg} | 基础常数 |",
+                "| 运动速度 | $\\vec{v}$ | \\vec{v} | \\text{m/s} | 矢量 |",
+                "| 动能 | $E_k$ | \\frac{1}{2}mv^2 | \\text{J} | 标量计算 |"));
+        String[] rows = rendered.getString().split("\\n", -1);
+        assertTrue(rows.length >= 3);
+        int lineWidth = rows[0].codePointCount(0, rows[0].length());
+        for (String row : rows) assertEquals(lineWidth, row.codePointCount(0, row.length()), row);
+        assertTrue(rendered.getString().contains("kg"));
+        assertTrue(rendered.getString().contains("v⃗"));
+        assertTrue(rendered.getString().contains("1/2mv²"));
+    }
+
+    @Test
     void colorsRequireStrictHexValues() {
         assertEquals("#AABBCC", RichChatColors.normalize("#aabbcc"));
         assertNull(RichChatColors.normalize("FFFFFF"));

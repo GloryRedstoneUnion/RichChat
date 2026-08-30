@@ -319,6 +319,12 @@ public final class LatexUnicodeRenderer {
     public record Segment(String text, boolean formula) {
     }
 
+    /** Converts only recognized LaTeX commands in an otherwise plain segment. */
+    public static String renderBare(String input) {
+        if (input == null || input.isEmpty() || !containsBareCommand(input)) return input;
+        return renderFormula(input);
+    }
+
     /**
      * 渲染多行 LaTeX 块 (公开接口, 供多行块状态机调用).
      *
@@ -364,6 +370,26 @@ public final class LatexUnicodeRenderer {
                         }
                         sb.append(formula.substring(i));
                         break;
+                    } else if (isWrapperCommand(cmd)) {
+                        int consumed = handleWrapper(formula, i + cmd.length(), sb, cmd);
+                        if (consumed > 0) {
+                            i += cmd.length() + consumed;
+                            continue;
+                        }
+                        sb.append(formula.substring(i));
+                        break;
+                    } else if (cmd.equals("\\left") || cmd.equals("\\right")) {
+                        i += cmd.length();
+                        continue;
+                    } else if (cmd.equals("\\quad") || cmd.equals("\\qquad")) {
+                        sb.append(cmd.equals("\\quad") ? "  " : "    ");
+                        i += cmd.length();
+                        continue;
+                    } else if (cmd.equals("\\,") || cmd.equals("\\;") || cmd.equals("\\:")
+                            || cmd.equals("\\!") || cmd.equals("\\ ")) {
+                        if (!cmd.equals("\\!")) sb.append(' ');
+                        i += cmd.length();
+                        continue;
                     } else {
                         String replacement = SYMBOLS.get(cmd);
                         if (replacement != null) {
@@ -413,6 +439,58 @@ public final class LatexUnicodeRenderer {
             i++;
         }
         return sb.toString();
+    }
+
+    private static boolean containsBareCommand(String input) {
+        return input.matches("(?s).*\\\\(?:text|mathrm|mathbf|mathit|mathsf|mathbb|mathcal|mathfrak|operatorname|vec|overline|underline|left|right|quad|qquad|cdot|frac|sqrt)\\b.*");
+    }
+
+    private static boolean isWrapperCommand(String cmd) {
+        return cmd.equals("\\text") || cmd.equals("\\mathrm") || cmd.equals("\\mathbf")
+                || cmd.equals("\\mathit") || cmd.equals("\\mathsf") || cmd.equals("\\mathbb")
+                || cmd.equals("\\mathcal") || cmd.equals("\\mathfrak") || cmd.equals("\\operatorname")
+                || cmd.equals("\\vec") || cmd.equals("\\overline") || cmd.equals("\\underline");
+    }
+
+    private static int handleWrapper(String formula, int start, StringBuilder out, String command) {
+        int j = start;
+        while (j < formula.length() && Character.isWhitespace(formula.charAt(j))) j++;
+        if (j >= formula.length()) return 0;
+        String inner;
+        int end;
+        if (formula.charAt(j) == '{') {
+            int close = findBraceClose(formula, j);
+            if (close < 0) return 0;
+            inner = formula.substring(j + 1, close);
+            end = close + 1;
+        } else {
+            inner = String.valueOf(formula.charAt(j));
+            end = j + 1;
+        }
+        String rendered = renderFormula(inner);
+        if (command.equals("\\vec")) rendered += "⃗";
+        else if (command.equals("\\overline")) rendered += "¯";
+        else if (command.equals("\\underline")) rendered = "_" + rendered;
+        else if (command.equals("\\mathbb")) rendered = toDoubleStruck(rendered);
+        out.append(rendered);
+        return end - start;
+    }
+
+    private static String toDoubleStruck(String value) {
+        StringBuilder result = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            result.append(switch (c) {
+                case 'A' -> '𝔸'; case 'B' -> '𝔹'; case 'C' -> 'ℂ'; case 'D' -> '𝔻';
+                case 'E' -> '𝔼'; case 'F' -> '𝔽'; case 'G' -> '𝔾'; case 'H' -> 'ℍ';
+                case 'I' -> '𝕀'; case 'J' -> '𝕁'; case 'K' -> '𝕂'; case 'L' -> '𝕃';
+                case 'M' -> '𝕄'; case 'N' -> 'ℕ'; case 'O' -> '𝕆'; case 'P' -> 'ℙ';
+                case 'Q' -> 'ℚ'; case 'R' -> 'ℝ'; case 'S' -> '𝕊'; case 'T' -> '𝕋';
+                case 'U' -> '𝕌'; case 'V' -> '𝕍'; case 'W' -> '𝕎'; case 'X' -> '𝕏';
+                case 'Y' -> '𝕐'; case 'Z' -> 'ℤ'; default -> c;
+            });
+        }
+        return result.toString();
     }
 
     /**

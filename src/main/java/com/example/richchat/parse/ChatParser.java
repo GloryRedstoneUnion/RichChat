@@ -181,7 +181,8 @@ public final class ChatParser {
             for (LatexUnicodeRenderer.Segment part : LatexUnicodeRenderer.renderSegments(seg.text)) {
                 if (!part.text().isEmpty()) {
                     Style style = part.formula() ? seg.style.withColor(RichChatConfig.INSTANCE.getColor("latex")) : seg.style;
-                    result.append(MarkdownRenderer.render(part.text(), style));
+                    String source = part.formula() ? part.text() : LatexUnicodeRenderer.renderBare(part.text());
+                    result.append(MarkdownRenderer.render(source, style));
                 }
             }
         }
@@ -201,7 +202,8 @@ public final class ChatParser {
         MutableText result = Text.empty();
         for (LatexUnicodeRenderer.Segment part : LatexUnicodeRenderer.renderSegments(source)) {
             Style style = part.formula() ? Style.EMPTY.withColor(RichChatConfig.INSTANCE.getColor("latex")) : Style.EMPTY;
-            result.append(MarkdownRenderer.render(part.text(), style));
+            String sourceText = part.formula() ? part.text() : LatexUnicodeRenderer.renderBare(part.text());
+            result.append(MarkdownRenderer.render(sourceText, style));
         }
         return result;
     }

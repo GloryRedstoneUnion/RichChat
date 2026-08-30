@@ -251,10 +251,11 @@ public final class TableRenderer {
      * </ul>
      */
     private static String makeSeparator(int width, Alignment align) {
+        if (width <= 1) return "-";
         return switch (align) {
-            case CENTER -> ":" + "-".repeat(Math.max(1, width - 2)) + ":";
-            case RIGHT -> "-".repeat(Math.max(1, width - 1)) + ":";
-            case LEFT -> ":" + "-".repeat(Math.max(1, width - 1));
+            case CENTER -> ":" + "-".repeat(width - 2) + ":";
+            case RIGHT -> "-".repeat(width - 1) + ":";
+            case LEFT -> ":" + "-".repeat(width - 1);
         };
     }
 
