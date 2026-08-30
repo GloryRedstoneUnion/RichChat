@@ -20,6 +20,7 @@ class RendererTest {
     void latexHandlesDelimitersAndMalformedInput() {
         assertEquals("x² + 1/2", LatexUnicodeRenderer.render("$x^2 + \\frac{1}{2}$"));
         assertEquals("Σ", LatexUnicodeRenderer.render("$$\\sum$$"));
+        assertEquals("¬ x", LatexUnicodeRenderer.render("\\neg x"));
         assertEquals("$x^2", LatexUnicodeRenderer.render("\\$x^2"));
         assertEquals("$x^2", LatexUnicodeRenderer.render("$x^2"));
         assertEquals("\\frac{a}", LatexUnicodeRenderer.render("$\\frac{a}$"));
@@ -50,9 +51,12 @@ class RendererTest {
     }
 
     @Test
-    void tableWidthCountsCodePoints() {
-        Text rendered = TableRenderer.render(List.of("| h |", "|---|", "| 😀 |"));
+    void tableWidthUsesUnicodeDisplayWidth() {
+        Text rendered = TableRenderer.render(List.of("| 表头 |", "|---|", "| 😀 |"));
         assertTrue(rendered.getString().contains("😀"));
+        String[] rows = rendered.getString().split("\\n", -1);
+        int lineWidth = TableRenderer.displayWidth(rows[0]);
+        for (String row : rows) assertEquals(lineWidth, TableRenderer.displayWidth(row), row);
     }
 
     @Test
@@ -65,11 +69,43 @@ class RendererTest {
                 "| 动能 | $E_k$ | \\frac{1}{2}mv^2 | \\text{J} | 标量计算 |"));
         String[] rows = rendered.getString().split("\\n", -1);
         assertTrue(rows.length >= 3);
-        int lineWidth = rows[0].codePointCount(0, rows[0].length());
-        for (String row : rows) assertEquals(lineWidth, row.codePointCount(0, row.length()), row);
+        int lineWidth = TableRenderer.displayWidth(rows[0]);
+        for (String row : rows) assertEquals(lineWidth, TableRenderer.displayWidth(row), row);
         assertTrue(rendered.getString().contains("kg"));
         assertTrue(rendered.getString().contains("v⃗"));
         assertTrue(rendered.getString().contains("1/2mv²"));
+    }
+
+    @Test
+    void screenshotTableKeepsChineseColumnsAlignedAndRendersBareLatex() {
+        Text rendered = TableRenderer.render(List.of(
+                "| 序号 | 方块类型 | 信号输出 (S) | 导电性 | 状态方程 |",
+                "|:---:|:---:|:---:|:---:|:---:|",
+                "| 1 | 红石块 | 15 | 充能 | f(x) = 1 |",
+                "| 2 | 红石火把 | 15 | 附着 | F(x) = \\neg x |",
+                "| 3 | 侦测器 | 15 | 脉冲 | \\delta(t) |"));
+
+        String[] rows = rendered.getString().split("\\n", -1);
+        assertEquals(5, rows.length);
+        int lineWidth = TableRenderer.displayWidth(rows[0]);
+        for (String row : rows) {
+            assertEquals(lineWidth, TableRenderer.displayWidth(row), row);
+        }
+        assertTrue(rendered.getString().contains("¬ x"));
+        assertTrue(rendered.getString().contains("δ(t)"));
+        assertFalse(rendered.getString().contains("\\neg"));
+    }
+
+    @Test
+    void tableTreatsEscapedPipeAsCellContent() {
+        Text rendered = TableRenderer.render(List.of(
+                "| Name | Value |",
+                "|---|---|",
+                "| left\\|right | ok |"));
+        assertTrue(rendered.getString().contains("left|right"));
+        String[] rows = rendered.getString().split("\\n", -1);
+        int lineWidth = TableRenderer.displayWidth(rows[0]);
+        for (String row : rows) assertEquals(lineWidth, TableRenderer.displayWidth(row), row);
     }
 
     @Test

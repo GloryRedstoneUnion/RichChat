@@ -19,7 +19,7 @@ import java.util.Optional;
  *   <li>数据行: {@code | a | b | c |}</li>
  * </ol>
  *
- * <p>渲染输出为对齐的 ASCII 表格:</p>
+ * <p>渲染输出为对齐的文本表格:</p>
  * <pre>
  * | h1 | h2 | h3 |
  * |:--:|:---|--:|
@@ -27,11 +27,11 @@ import java.util.Optional;
  * </pre>
  *
  * <p>表头加粗, 数据行按对齐方式 (左 / 中 / 右) 填充空格. 列宽取该列所有单元格
- * 的最大长度.</p>
+ * 的最大 Unicode 显示宽度 (CJK / 全角字符占两格, combining mark 不占格).</p>
  *
  * <p><b>单元格内的 Markdown / LaTeX:</b> 每个单元格内容会先经过
  * {@link ChatParser#renderSource(String)} 渲染 (LaTeX → Unicode 近似 + Markdown → Text),
- * 然后再做对齐填充. 对齐宽度按渲染后的可见字符长度计算.</p>
+ * 然后再做对齐填充. 对齐宽度按渲染后的 Unicode 显示宽度计算.</p>
  */
 public final class TableRenderer {
 
@@ -125,7 +125,7 @@ public final class TableRenderer {
      * <p>规则:</p>
      * <ul>
      *   <li>去掉首尾的 {@code |}.</li>
-     *   <li>按 {@code |} 分隔.</li>
+     *   <li>按未转义的 {@code |} 分隔, {@code \|} 保留为单元格中的字面量 {@code |}.</li>
      *   <li>每个单元格 trim 空白.</li>
      * </ul>
      *
@@ -133,15 +133,40 @@ public final class TableRenderer {
      * @return 单元格数组.
      */
     private static String[] splitRow(String line) {
-        String t = line.trim();
-        if (t.startsWith("|")) t = t.substring(1);
-        if (t.endsWith("|")) t = t.substring(0, t.length() - 1);
-        String[] parts = t.split("\\|", -1);
-        String[] result = new String[parts.length];
-        for (int i = 0; i < parts.length; i++) {
-            result[i] = parts[i].trim();
+        String t = line == null ? "" : line.trim();
+        List<String> parts = new ArrayList<>();
+        StringBuilder cell = new StringBuilder();
+        for (int i = 0; i < t.length(); i++) {
+            char c = t.charAt(i);
+            if (c == '\\' && i + 1 < t.length() && t.charAt(i + 1) == '|') {
+                cell.append('|');
+                i++;
+            } else if (c == '|') {
+                parts.add(cell.toString().trim());
+                cell.setLength(0);
+            } else {
+                cell.append(c);
+            }
         }
-        return result;
+        parts.add(cell.toString().trim());
+
+        // A leading/trailing pipe is syntax, not an empty cell. Do not strip an
+        // escaped trailing pipe (the scanner above already converted it).
+        if (t.startsWith("|") && !parts.isEmpty()) {
+            parts.remove(0);
+        }
+        if (t.endsWith("|") && !isEscaped(t, t.length() - 1) && !parts.isEmpty()) {
+            parts.remove(parts.size() - 1);
+        }
+        return parts.toArray(String[]::new);
+    }
+
+    private static boolean isEscaped(String value, int index) {
+        int slashes = 0;
+        for (int i = index - 1; i >= 0 && value.charAt(i) == '\\'; i--) {
+            slashes++;
+        }
+        return (slashes & 1) == 1;
     }
 
     /**
@@ -260,15 +285,62 @@ public final class TableRenderer {
     }
 
     /**
-     * 计算渲染后 Text 的可见字符长度 (用 visit 展开).
+     * 计算渲染后 Text 的 Unicode 显示宽度 (用 visit 展开).
      */
     private static int visibleLength(Text text) {
         final int[] count = {0};
         text.visit((style, string) -> {
-            count[0] += string.codePointCount(0, string.length());
+            count[0] += displayWidth(string);
             return Optional.empty();
         }, Style.EMPTY);
         return count[0];
+    }
+
+    /**
+     * 计算字符串在聊天字体中的近似列宽.
+     *
+     * <p>Minecraft 的默认字体将 CJK、全角字符和大多数 emoji 绘制为两个
+     * ASCII 字符的宽度. 只使用 {@link String#codePointCount} 会让中文表格
+     * 的分隔线逐列漂移. 这里使用无外部依赖的 wcwidth 风格范围表; combining
+     * mark、变体选择符和连接符不增加宽度.</p>
+     */
+    static int displayWidth(CharSequence value) {
+        if (value == null || value.length() == 0) return 0;
+        int width = 0;
+        for (int i = 0; i < value.length();) {
+            int codePoint = Character.codePointAt(value, i);
+            i += Character.charCount(codePoint);
+            if (isZeroWidth(codePoint)) continue;
+            width += isWide(codePoint) ? 2 : 1;
+        }
+        return width;
+    }
+
+    private static boolean isZeroWidth(int codePoint) {
+        int type = Character.getType(codePoint);
+        return type == Character.NON_SPACING_MARK
+                || type == Character.COMBINING_SPACING_MARK
+                || type == Character.ENCLOSING_MARK
+                || type == Character.FORMAT
+                || codePoint == '\n' || codePoint == '\r' || codePoint == '\t';
+    }
+
+    private static boolean isWide(int codePoint) {
+        return (codePoint >= 0x1100 && codePoint <= 0x115F)
+                || (codePoint >= 0x2329 && codePoint <= 0x232A)
+                || (codePoint >= 0x2E80 && codePoint <= 0x303E)
+                || (codePoint >= 0x3040 && codePoint <= 0x3247)
+                || (codePoint >= 0x3250 && codePoint <= 0x4DBF)
+                || (codePoint >= 0x4E00 && codePoint <= 0xA4C6)
+                || (codePoint >= 0xA960 && codePoint <= 0xA97C)
+                || (codePoint >= 0xAC00 && codePoint <= 0xD7A3)
+                || (codePoint >= 0xF900 && codePoint <= 0xFAFF)
+                || (codePoint >= 0xFE10 && codePoint <= 0xFE19)
+                || (codePoint >= 0xFE30 && codePoint <= 0xFE6B)
+                || (codePoint >= 0xFF01 && codePoint <= 0xFF60)
+                || (codePoint >= 0xFFE0 && codePoint <= 0xFFE6)
+                || (codePoint >= 0x1F000 && codePoint <= 0x1FAFF)
+                || (codePoint >= 0x20000 && codePoint <= 0x3FFFD);
     }
 
     /**

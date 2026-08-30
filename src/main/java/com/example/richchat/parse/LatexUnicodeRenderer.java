@@ -121,6 +121,8 @@ public final class LatexUnicodeRenderer {
         SYMBOLS.put("\\forall", "∀");
         SYMBOLS.put("\\exists", "∃");
         SYMBOLS.put("\\nexists", "∄");
+        SYMBOLS.put("\\neg", "¬");
+        SYMBOLS.put("\\lnot", "¬");
         SYMBOLS.put("\\in", "∈");
         SYMBOLS.put("\\notin", "∉");
         SYMBOLS.put("\\ni", "∋");
@@ -274,7 +276,9 @@ public final class LatexUnicodeRenderer {
             return input;
         }
         StringBuilder result = new StringBuilder(input.length());
-        for (Segment segment : renderSegments(input)) result.append(segment.text());
+        for (Segment segment : renderSegments(input)) {
+            result.append(segment.formula() ? segment.text() : renderBare(segment.text()));
+        }
         return result.toString();
     }
 
@@ -442,7 +446,14 @@ public final class LatexUnicodeRenderer {
     }
 
     private static boolean containsBareCommand(String input) {
-        return input.matches("(?s).*\\\\(?:text|mathrm|mathbf|mathit|mathsf|mathbb|mathcal|mathfrak|operatorname|vec|overline|underline|left|right|quad|qquad|cdot|frac|sqrt)\\b.*");
+        if (input == null || input.isEmpty()) return false;
+        // Keep this in sync with the symbol table instead of maintaining a
+        // second, incomplete regular-expression allowlist. Commands are only
+        // converted when they are known; ordinary Markdown escapes remain text.
+        for (String command : SYMBOLS.keySet()) {
+            if (input.contains(command)) return true;
+        }
+        return input.matches("(?s).*\\\\(?:text|mathrm|mathbf|mathit|mathsf|mathbb|mathcal|mathfrak|operatorname|vec|overline|underline|left|right|quad|qquad|frac|sqrt)\\b.*");
     }
 
     private static boolean isWrapperCommand(String cmd) {
