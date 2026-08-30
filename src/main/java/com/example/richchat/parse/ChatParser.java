@@ -5,6 +5,7 @@ import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextContent;
 import net.minecraft.text.TranslatableTextContent;
+import com.example.richchat.config.RichChatConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -169,11 +170,19 @@ public final class ChatParser {
             return text;
         }
 
+        if (requiresCrossSegmentParse(segments)) {
+            StringBuilder source = new StringBuilder();
+            for (StyleSegment segment : segments) source.append(segment.text);
+            return MarkdownRenderer.render(LatexUnicodeRenderer.render(source.toString()), segments.get(0).style);
+        }
+
         MutableText result = Text.empty();
         for (StyleSegment seg : segments) {
-            String latexProcessed = LatexUnicodeRenderer.render(seg.text);
-            if (!latexProcessed.isEmpty()) {
-                result.append(MarkdownRenderer.render(latexProcessed, seg.style));
+            for (LatexUnicodeRenderer.Segment part : LatexUnicodeRenderer.renderSegments(seg.text)) {
+                if (!part.text().isEmpty()) {
+                    Style style = part.formula() ? seg.style.withColor(RichChatConfig.INSTANCE.getColor("latex")) : seg.style;
+                    result.append(MarkdownRenderer.render(part.text(), style));
+                }
             }
         }
         return result;
@@ -189,8 +198,12 @@ public final class ChatParser {
      * @return 渲染后的 Text.
      */
     public static Text renderSource(String source) {
-        String latexProcessed = LatexUnicodeRenderer.render(source);
-        return MarkdownRenderer.render(latexProcessed);
+        MutableText result = Text.empty();
+        for (LatexUnicodeRenderer.Segment part : LatexUnicodeRenderer.renderSegments(source)) {
+            Style style = part.formula() ? Style.EMPTY.withColor(RichChatConfig.INSTANCE.getColor("latex")) : Style.EMPTY;
+            result.append(MarkdownRenderer.render(part.text(), style));
+        }
+        return result;
     }
 
     /**
@@ -251,7 +264,8 @@ public final class ChatParser {
      */
     public static Text renderMultiLineLatexBlock(String formula) {
         String latexProcessed = LatexUnicodeRenderer.renderBlock(formula);
-        return MarkdownRenderer.render(latexProcessed);
+        return MarkdownRenderer.render(latexProcessed,
+                Style.EMPTY.withColor(RichChatConfig.INSTANCE.getColor("latex")));
     }
 
     /**
@@ -288,5 +302,30 @@ public final class ChatParser {
             this.style = style;
             this.text = text;
         }
+    }
+
+    private static boolean requiresCrossSegmentParse(List<StyleSegment> segments) {
+        int totalBackticks = 0;
+        int totalBold = 0;
+        int totalStrike = 0;
+        for (StyleSegment segment : segments) {
+            totalBackticks += count(segment.text, "`");
+            totalBold += count(segment.text, "**");
+            totalStrike += count(segment.text, "~~");
+        }
+        return (totalBackticks % 2 == 0 && totalBackticks > 0)
+                || (totalBold % 2 == 0 && totalBold > 0)
+                || (totalStrike % 2 == 0 && totalStrike > 0);
+    }
+
+    private static int count(String source, String token) {
+        int count = 0;
+        for (int i = 0; i <= source.length() - token.length(); i++) {
+            if (source.startsWith(token, i)) {
+                count++;
+                i += token.length() - 1;
+            }
+        }
+        return count;
     }
 }

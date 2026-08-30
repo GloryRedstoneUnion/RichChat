@@ -3,6 +3,7 @@ package com.example.richchat.parse;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import com.example.richchat.config.RichChatConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -89,7 +90,7 @@ public final class TableRenderer {
                 String cell = c < row.length ? row[c] : "";
                 // 渲染单元格内容 (LaTeX + Markdown)
                 Text rendered = ChatParser.renderSource(cell);
-                cellTexts[r][c] = rendered;
+                cellTexts[r][c] = applyBaseColor(rendered, r == 0 ? "tableHeader" : "tableBody");
                 int w = visibleLength(rendered);
                 cellWidths[r][c] = w;
                 colWidths[c] = Math.max(colWidths[c], w);
@@ -216,6 +217,16 @@ public final class TableRenderer {
         return result;
     }
 
+    private static Text applyBaseColor(Text text, String category) {
+        MutableText result = Text.empty();
+        net.minecraft.text.TextColor color = RichChatConfig.INSTANCE.getColor(category);
+        text.visit((style, string) -> {
+            result.append(Text.literal(string).setStyle(color == null ? style : style.withColor(color)));
+            return Optional.empty();
+        }, Style.EMPTY);
+        return result;
+    }
+
     /**
      * 渲染分隔行 (如 {@code |:---:|:---|---:|}).
      */
@@ -253,7 +264,7 @@ public final class TableRenderer {
     private static int visibleLength(Text text) {
         final int[] count = {0};
         text.visit((style, string) -> {
-            count[0] += string.length();
+            count[0] += string.codePointCount(0, string.length());
             return Optional.empty();
         }, Style.EMPTY);
         return count[0];

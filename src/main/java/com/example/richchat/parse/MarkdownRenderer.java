@@ -3,7 +3,7 @@ package com.example.richchat.parse;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import com.example.richchat.config.RichChatConfig;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,6 +67,9 @@ public final class MarkdownRenderer {
         if (text == null || text.isEmpty()) {
             return result;
         }
+        if (baseStyle.getColor() == null) {
+            baseStyle = semanticStyle(baseStyle, "plain");
+        }
 
         String[] lines = text.split("\n", -1);
         boolean inCodeBlock = false;
@@ -76,16 +79,27 @@ public final class MarkdownRenderer {
             String line = lines[lineIdx];
 
             // 代码块开始 / 结束
-            if (line.startsWith("```")) {
+            String trimmedLine = line.trim();
+            if (trimmedLine.startsWith("```")) {
+                int sameLineClose = trimmedLine.indexOf("```", 3);
+                if (!inCodeBlock && sameLineClose > 3) {
+                    result.append(renderInlineCode(trimmedLine.substring(3, sameLineClose), baseStyle));
+                    if (lineIdx < lines.length - 1) result.append(Text.literal("\n"));
+                    continue;
+                }
                 if (inCodeBlock) {
-                    result.append(renderCodeBlock(codeBlock.toString()));
+                    String raw = codeBlock.toString();
+                    int firstLineEnd = raw.indexOf('\n');
+                    String content = firstLineEnd >= 0 ? raw.substring(firstLineEnd + 1) : raw;
+                    result.append(renderCodeBlock(content));
                     codeBlock.setLength(0);
                     inCodeBlock = false;
                 } else {
                     inCodeBlock = true;
                     codeBlock.setLength(0);
+                    codeBlock.append(line).append('\n');
                 }
-                if (lineIdx < lines.length - 1) {
+                if (!inCodeBlock && lineIdx < lines.length - 1) {
                     result.append(Text.literal("\n"));
                 }
                 continue;
@@ -109,7 +123,7 @@ public final class MarkdownRenderer {
 
         // 未闭合代码块: 作为代码内容输出
         if (inCodeBlock) {
-            result.append(renderCodeBlock(codeBlock.toString()));
+            result.append(Text.literal(codeBlock.toString()).setStyle(baseStyle));
         }
 
         return result;
@@ -124,33 +138,34 @@ public final class MarkdownRenderer {
         if (line.startsWith("# ")) {
             // 标题: 强语义, 覆盖颜色
             result.append(parseInline(line.substring(2),
-                    baseStyle.withBold(true).withColor(Formatting.BLUE)));
+                    semanticStyle(baseStyle, "heading1").withBold(true)));
         } else if (line.startsWith("## ")) {
             result.append(parseInline(line.substring(3),
-                    baseStyle.withBold(true).withColor(Formatting.GREEN)));
+                    semanticStyle(baseStyle, "heading2").withBold(true)));
         } else if (line.startsWith("### ")) {
             result.append(parseInline(line.substring(4),
-                    baseStyle.withBold(true).withColor(Formatting.YELLOW)));
+                    semanticStyle(baseStyle, "heading3").withBold(true)));
         } else if (line.startsWith("#### ")) {
             result.append(parseInline(line.substring(5),
-                    baseStyle.withBold(true).withColor(Formatting.AQUA)));
+                    semanticStyle(baseStyle, "heading4").withBold(true)));
         } else if (line.startsWith("##### ")) {
             result.append(parseInline(line.substring(6),
-                    baseStyle.withBold(true).withColor(Formatting.LIGHT_PURPLE)));
+                    semanticStyle(baseStyle, "heading5").withBold(true)));
         } else if (line.startsWith("###### ")) {
             result.append(parseInline(line.substring(7),
-                    baseStyle.withBold(true).withColor(Formatting.RED)));
+                    semanticStyle(baseStyle, "heading6").withBold(true)));
         } else if (line.startsWith("- ") || line.startsWith("* ")) {
             // 列表: 保留 baseStyle 颜色
-            result.append(Text.literal("• ").setStyle(baseStyle));
-            result.append(parseInline(line.substring(2), baseStyle));
+            Style listStyle = semanticStyle(baseStyle, "list");
+            result.append(Text.literal("• ").setStyle(listStyle));
+            result.append(parseInline(line.substring(2), listStyle));
         } else if (line.startsWith("> ")) {
             // 引用: 强语义, 覆盖颜色
-            Style quoteStyle = baseStyle.withColor(Formatting.GRAY).withItalic(true);
+            Style quoteStyle = semanticStyle(baseStyle, "quote").withItalic(true);
             result.append(Text.literal("  ").setStyle(quoteStyle));
             result.append(parseInline(line.substring(2), quoteStyle));
         } else if (line.startsWith(">")) {
-            Style quoteStyle = baseStyle.withColor(Formatting.GRAY).withItalic(true);
+            Style quoteStyle = semanticStyle(baseStyle, "quote").withItalic(true);
             result.append(Text.literal("  ").setStyle(quoteStyle));
             result.append(parseInline("", quoteStyle));
         } else {
@@ -199,7 +214,7 @@ public final class MarkdownRenderer {
                 if (end != -1) {
                     flushPlain(result, plain, baseStyle);
                     String inner = text.substring(i + 2, end);
-                    result.append(parseInline(inner, baseStyle.withBold(true)));
+                    result.append(parseInline(inner, semanticStyle(baseStyle, "bold").withBold(true)));
                     i = end + 2;
                     continue;
                 }
@@ -211,7 +226,7 @@ public final class MarkdownRenderer {
                 if (end != -1 && end > i + 1) {
                     flushPlain(result, plain, baseStyle);
                     String inner = text.substring(i + 1, end);
-                    result.append(parseInline(inner, baseStyle.withItalic(true)));
+                    result.append(parseInline(inner, semanticStyle(baseStyle, "italic").withItalic(true)));
                     i = end + 1;
                     continue;
                 }
@@ -223,7 +238,7 @@ public final class MarkdownRenderer {
                 if (end != -1) {
                     flushPlain(result, plain, baseStyle);
                     String inner = text.substring(i + 2, end);
-                    result.append(parseInline(inner, baseStyle.withStrikethrough(true)));
+                    result.append(parseInline(inner, semanticStyle(baseStyle, "strikethrough").withStrikethrough(true)));
                     i = end + 2;
                     continue;
                 }
@@ -254,7 +269,7 @@ public final class MarkdownRenderer {
                 if (urlEnd > i) {
                     flushPlain(result, plain, baseStyle);
                     String url = text.substring(i, urlEnd);
-                    Style urlStyle = baseStyle.withColor(Formatting.BLUE).withUnderline(true)
+                    Style urlStyle = semanticStyle(baseStyle, "link").withUnderline(true)
                             .withClickEvent(new net.minecraft.text.ClickEvent(
                                     net.minecraft.text.ClickEvent.Action.OPEN_URL, url));
                     result.append(Text.literal(url).setStyle(urlStyle));
@@ -279,7 +294,7 @@ public final class MarkdownRenderer {
      * 该字体对 ASCII / 中文显示为乱码).</p>
      */
     private static MutableText renderInlineCode(String code, Style baseStyle) {
-        Style codeStyle = Style.EMPTY.withColor(Formatting.DARK_GRAY);
+        Style codeStyle = semanticStyle(baseStyle, "inlineCode");
         // 在代码片段中检测 URL
         Matcher m = URL_PATTERN.matcher(code);
         MutableText result = Text.empty();
@@ -289,7 +304,7 @@ public final class MarkdownRenderer {
                 result.append(Text.literal(code.substring(last, m.start())).setStyle(codeStyle));
             }
             String url = m.group(1);
-            Style urlStyle = codeStyle.withColor(Formatting.AQUA).withUnderline(true)
+            Style urlStyle = semanticStyle(codeStyle, "link").withUnderline(true)
                     .withClickEvent(new net.minecraft.text.ClickEvent(
                             net.minecraft.text.ClickEvent.Action.OPEN_URL, url));
             result.append(Text.literal(url).setStyle(urlStyle));
@@ -314,7 +329,7 @@ public final class MarkdownRenderer {
      * @return 渲染后的 Text.
      */
     public static MutableText renderCodeBlock(String content) {
-        Style codeStyle = Style.EMPTY.withColor(Formatting.DARK_GRAY);
+        Style codeStyle = semanticStyle(Style.EMPTY, "codeBlock");
         return Text.literal(content).setStyle(codeStyle);
     }
 
@@ -336,7 +351,7 @@ public final class MarkdownRenderer {
         flushPlain(result, plain, baseStyle);
         String linkText = text.substring(start + 1, textEnd);
         String url = text.substring(textEnd + 2, urlEnd);
-        Style linkStyle = baseStyle.withColor(Formatting.BLUE).withUnderline(true)
+        Style linkStyle = semanticStyle(baseStyle, "link").withUnderline(true)
                 .withClickEvent(new net.minecraft.text.ClickEvent(
                         net.minecraft.text.ClickEvent.Action.OPEN_URL, url));
         result.append(parseInline(linkText, linkStyle));
@@ -351,6 +366,11 @@ public final class MarkdownRenderer {
             result.append(Text.literal(plain.toString()).setStyle(style));
             plain.setLength(0);
         }
+    }
+
+    private static Style semanticStyle(Style baseStyle, String category) {
+        net.minecraft.text.TextColor color = RichChatConfig.INSTANCE.getColor(category);
+        return color == null ? baseStyle : baseStyle.withColor(color);
     }
 
     /**

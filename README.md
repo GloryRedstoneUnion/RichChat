@@ -13,7 +13,8 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 - **悬停看源码**：对每条已渲染消息悬停时显示其原始未渲染文本
 - **多行块支持**：跨消息累积多行代码块、多行 LaTeX 块（`$$...$$`）、Markdown 表格
 - **嵌套代码块**：外层 ```` ```markdown ```` 代码块内可包含 ```` ```python ```` 内层代码块，正确匹配闭合
-- **客户端命令**：`/richchat toggle|status|reload`，状态持久化到配置文件
+- **客户端命令**：`/richchat toggle|status|reload|color`，状态持久化到配置文件
+- **颜色配置**：为 Markdown、LaTeX、代码、链接、标题、引用和表格分别设置 `#RRGGBB` 颜色
 - **即时刷新**：切换开关时已存在的消息立即重新渲染或还原为源码
 - **零开销**：关闭时跳过所有转换逻辑，无性能损耗
 
@@ -32,7 +33,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 
 ### 方式一：使用预构建 jar
 
-1. 下载 `RichChat-1.0.0.jar`
+1. 下载 `RichChat-1.1.0.jar`
 2. 将其放入 `.minecraft/mods/` 目录
 3. 确保 `fabric-api-0.92.2+1.20.1.jar` 也已在 mods 目录
 4. 启动 Minecraft 1.20.1（Fabric Loader）
@@ -43,7 +44,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 git clone <repo-url>
 cd RichChat
 ./gradlew build
-# 产物: build/libs/RichChat-1.0.0.jar
+# 产物: build/libs/RichChat-1.1.0.jar
 ```
 
 ## 使用方法
@@ -103,6 +104,9 @@ $$
 | `/richchat toggle` | 开关渲染功能（已存在消息会即时刷新） |
 | `/richchat status` | 查看当前渲染与悬停状态 |
 | `/richchat reload` | 重新加载配置文件 |
+| `/richchat color` | 查看所有语义颜色 |
+| `/richchat color <category> <#RRGGBB>` | 设置颜色并立即刷新聊天 |
+| `/richchat color reset <category|all>` | 恢复默认颜色 |
 
 命令仅注册在客户端，无需服务端权限。
 
@@ -113,7 +117,27 @@ $$
 ```json
 {
   "enabled": true,
-  "showSourceOnHover": true
+  "showSourceOnHover": true,
+  "colors": {
+    "plain": "#FFFFFF",
+    "bold": "#FFFFFF",
+    "italic": "#FFFFFF",
+    "strikethrough": "#FFFFFF",
+    "list": "#FFFFFF",
+    "inlineCode": "#D0D0D0",
+    "codeBlock": "#D0D0D0",
+    "link": "#55FFFF",
+    "heading1": "#5555FF",
+    "heading2": "#55FF55",
+    "heading3": "#FFFF55",
+    "heading4": "#55FFFF",
+    "heading5": "#FF55FF",
+    "heading6": "#FF5555",
+    "quote": "#AAAAAA",
+    "latex": "#FFFFFF",
+    "tableHeader": "#FFFFFF",
+    "tableBody": "#FFFFFF"
+  }
 }
 ```
 
@@ -121,6 +145,7 @@ $$
 |------|------|--------|------|
 | `enabled` | bool | `true` | 是否启用渲染 |
 | `showSourceOnHover` | bool | `true` | 是否在悬停时显示原始源码 |
+| `colors` | object | 见示例 | 各语义类别的 `#RRGGBB` 颜色 |
 
 配置在游戏重启后保留。
 

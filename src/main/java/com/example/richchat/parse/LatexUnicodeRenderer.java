@@ -2,6 +2,8 @@ package com.example.richchat.parse;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * LaTeX 公式 → Unicode 近似转换器.
@@ -272,43 +274,49 @@ public final class LatexUnicodeRenderer {
             return input;
         }
         StringBuilder result = new StringBuilder(input.length());
+        for (Segment segment : renderSegments(input)) result.append(segment.text());
+        return result.toString();
+    }
+
+    /** Splits rendered input into plain and formula spans, retaining malformed formulas as plain text. */
+    public static List<Segment> renderSegments(String input) {
+        List<Segment> segments = new ArrayList<>();
+        if (input == null || input.isEmpty()) return segments;
+        StringBuilder plain = new StringBuilder();
         int i = 0;
         while (i < input.length()) {
             char c = input.charAt(i);
-
-            // 转义: \$ → $, \$\$ → $$
             if (c == '\\' && i + 1 < input.length() && input.charAt(i + 1) == '$') {
-                result.append('$');
+                plain.append('$');
                 i += 2;
                 continue;
             }
-
-            // 块级公式 $$...$$
-            if (c == '$' && i + 1 < input.length() && input.charAt(i + 1) == '$') {
-                int end = findClosing(input, i + 2, "$$");
-                if (end != -1) {
-                    String formula = input.substring(i + 2, end);
-                    result.append(renderFormula(formula));
-                    i = end + 2;
+            String marker = null;
+            if (c == '$' && i + 1 < input.length() && input.charAt(i + 1) == '$') marker = "$$";
+            else if (c == '$') marker = "$";
+            if (marker != null) {
+                int end = findClosing(input, i + marker.length(), marker);
+                if (end >= 0) {
+                    if (plain.length() > 0) {
+                        segments.add(new Segment(plain.toString(), false));
+                        plain.setLength(0);
+                    }
+                    segments.add(new Segment(renderFormula(input.substring(i + marker.length(), end)), true));
+                    i = end + marker.length();
                     continue;
                 }
+                plain.append(marker);
+                i += marker.length();
+                continue;
             }
-
-            // 行内公式 $...$
-            if (c == '$') {
-                int end = findClosing(input, i + 1, "$");
-                if (end != -1) {
-                    String formula = input.substring(i + 1, end);
-                    result.append(renderFormula(formula));
-                    i = end + 1;
-                    continue;
-                }
-            }
-
-            result.append(c);
+            plain.append(c);
             i++;
         }
-        return result.toString();
+        if (plain.length() > 0) segments.add(new Segment(plain.toString(), false));
+        return segments;
+    }
+
+    public record Segment(String text, boolean formula) {
     }
 
     /**
@@ -346,12 +354,16 @@ public final class LatexUnicodeRenderer {
                             i += cmd.length() + consumed;
                             continue;
                         }
+                        sb.append(formula.substring(i));
+                        break;
                     } else if (cmd.equals("\\frac")) {
                         int consumed = handleFrac(formula, i + cmd.length(), sb);
                         if (consumed > 0) {
                             i += cmd.length() + consumed;
                             continue;
                         }
+                        sb.append(formula.substring(i));
+                        break;
                     } else {
                         String replacement = SYMBOLS.get(cmd);
                         if (replacement != null) {

@@ -3,6 +3,7 @@ package com.example.richchat.command;
 import com.example.richchat.RichChatMod;
 import com.example.richchat.client.ChatRefreshManager;
 import com.example.richchat.config.RichChatConfig;
+import com.example.richchat.config.RichChatColors;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -11,6 +12,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import com.mojang.brigadier.arguments.StringArgumentType;
 
 /**
  * 客户端命令 {@code /richchat} 注册与处理.
@@ -31,6 +33,7 @@ public final class RichChatCommand {
     public static final String SUB_TOGGLE = "toggle";
     public static final String SUB_STATUS = "status";
     public static final String SUB_RELOAD = "reload";
+    public static final String SUB_COLOR = "color";
 
     private RichChatCommand() {
     }
@@ -52,6 +55,14 @@ public final class RichChatCommand {
                                 .executes(RichChatCommand::status))
                         .then(ClientCommandManager.literal(SUB_RELOAD)
                                 .executes(RichChatCommand::reload))
+                        .then(ClientCommandManager.literal(SUB_COLOR)
+                                .executes(RichChatCommand::colors)
+                                .then(ClientCommandManager.literal("reset")
+                                        .then(ClientCommandManager.argument("category", StringArgumentType.word())
+                                                .executes(RichChatCommand::resetColor)))
+                                .then(ClientCommandManager.argument("category", StringArgumentType.word())
+                                        .then(ClientCommandManager.argument("value", StringArgumentType.word())
+                                                .executes(RichChatCommand::setColor))))
         );
         RichChatMod.LOGGER.info("[RichChat] 命令 /{} 已注册.", ROOT);
     }
@@ -101,6 +112,48 @@ public final class RichChatCommand {
         Text msg = Text.literal("[RichChat] 配置已重载.")
                 .formatted(Formatting.GREEN);
         ctx.getSource().sendFeedback(msg);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int colors(CommandContext<FabricClientCommandSource> ctx) {
+        RichChatConfig cfg = RichChatConfig.INSTANCE;
+        Text msg = Text.literal("[RichChat] 颜色:").formatted(Formatting.AQUA);
+        for (String category : RichChatColors.CATEGORIES) {
+            msg = msg.copy().append(Text.literal("\n  " + category + ": " + cfg.getColorHex(category))
+                    .formatted(Formatting.WHITE));
+        }
+        ctx.getSource().sendFeedback(msg);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int setColor(CommandContext<FabricClientCommandSource> ctx) {
+        String category = StringArgumentType.getString(ctx, "category");
+        String value = StringArgumentType.getString(ctx, "value");
+        RichChatConfig cfg = RichChatConfig.INSTANCE;
+        if (!cfg.setColorHex(category, value)) {
+            ctx.getSource().sendError(Text.literal("用法: /richchat color <category> <#RRGGBB>"));
+            return 0;
+        }
+        cfg.save();
+        ChatRefreshManager.refreshChatHud();
+        ctx.getSource().sendFeedback(Text.literal("[RichChat] 已设置 " + category + " = " + cfg.getColorHex(category))
+                .formatted(Formatting.GREEN));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static int resetColor(CommandContext<FabricClientCommandSource> ctx) {
+        String category = StringArgumentType.getString(ctx, "category");
+        RichChatConfig cfg = RichChatConfig.INSTANCE;
+        if ("all".equalsIgnoreCase(category)) {
+            for (String name : RichChatColors.CATEGORIES) cfg.resetColor(name);
+        } else if (!cfg.resetColor(category)) {
+            ctx.getSource().sendError(Text.literal("未知颜色类别: " + category));
+            return 0;
+        }
+        cfg.save();
+        ChatRefreshManager.refreshChatHud();
+        ctx.getSource().sendFeedback(Text.literal("[RichChat] 颜色已重置: " + category)
+                .formatted(Formatting.GREEN));
         return Command.SINGLE_SUCCESS;
     }
 }
