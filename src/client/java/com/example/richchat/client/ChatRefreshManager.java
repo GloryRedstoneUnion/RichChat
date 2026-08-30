@@ -101,6 +101,10 @@ public final class ChatRefreshManager {
             );
             messages.set(i, replacement);
         }
+
+        // ChatHud renders a separate wrapped visible-message cache. Rebuild it
+        // after replacing history, otherwise the screen keeps the old Text.
+        accessor.richchat$refresh();
     }
 
     /**
@@ -137,6 +141,7 @@ public final class ChatRefreshManager {
                 return ClientTableRenderer.render(java.util.Arrays.asList(lines));
             }
         }
-        return ChatParser.renderSource(source);
+        return ChatParser.renderSourcePreservingChatPrefix(source);
     }
+
 }

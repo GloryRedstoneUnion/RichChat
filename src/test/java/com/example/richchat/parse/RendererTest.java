@@ -53,6 +53,33 @@ class RendererTest {
     }
 
     @Test
+    void chatBodyRendersWhenChatComponentIsNestedAfterPrefix() {
+        Text source = Text.empty()
+                .append(Text.literal("[Survival] "))
+                .append(Text.translatable("chat.type.text", Text.literal("Chat"),
+                        Text.literal("# Modern heading")));
+        Text rendered = ChatParser.parse(source);
+        assertEquals("[Survival] <Chat> Modern heading", rendered.getString());
+        assertTrue(rendered.getString().startsWith("[Survival] <Chat> "));
+    }
+
+    @Test
+    void chatTextWithExtraPrefixArgumentRendersTheLastArgumentAsBody() {
+        Text source = Text.translatable("chat.type.text", Text.literal("[Survival] "),
+                Text.literal("Chat"), Text.literal("## Server heading"));
+        Text rendered = ChatParser.parse(source);
+        assertEquals("[Survival] <Chat> Server heading", rendered.getString());
+        assertEquals("## Server heading", ChatParser.extractMessageBody(source));
+    }
+
+    @Test
+    void recoveredChatSourceRendersOnlyBodyAfterPlayerPrefix() {
+        Text rendered = ChatParser.renderSourcePreservingChatPrefix(
+                "[Survival] <Chat> **bold** $x^2$");
+        assertEquals("[Survival] <Chat> bold x²", rendered.getString());
+    }
+
+    @Test
     void markdownKeepsNestedStylesAndEscapedMarkers() {
         Text rendered = MarkdownRenderer.render("**bold *and italic*** \\*literal\\* [link](https://example.com)");
         assertEquals("bold and italic *literal* link", rendered.getString());

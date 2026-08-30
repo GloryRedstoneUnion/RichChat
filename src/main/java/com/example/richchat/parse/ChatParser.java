@@ -17,9 +17,10 @@ import java.util.Optional;
  * <p>负责将原始聊天消息 {@link Text} 解析为渲染后的 Text. 解析策略分为两层:</p>
  *
  * <h3>第一层: 结构化识别 (优先)</h3>
- * <p>vanilla 聊天消息本质上是 {@link TranslatableTextContent}, 翻译键与参数位置固定:</p>
+ * <p>vanilla 聊天消息本质上是 {@link TranslatableTextContent}; 常见参数位置固定，
+ * 但服务器插件可能在聊天组件外层或参数列表前面追加频道/队伍前缀:</p>
  * <ul>
- *   <li>{@code chat.type.text} = {@code <%s> %s} —— args[0]=sender, args[1]=message</li>
+ *   <li>{@code chat.type.text} = {@code <%s> %s} —— sender/message are the final two args</li>
  *   <li>{@code chat.type.team.text} = {@code %s <%s> %s} —— args[0]=team prefix,
  *       args[1]=sender, args[2]=message</li>
  * </ul>
@@ -79,6 +80,27 @@ public final class ChatParser {
      * @return 重构后的 Text (前缀 literal 拼接 + 消息体渲染); 不匹配时返回 null.
      */
     private static Text parseChatStructure(Text original) {
+        Text direct = parseDirectChatStructure(original);
+        if (direct != null) {
+            return direct;
+        }
+
+        // Some servers prepend a team/channel label as a sibling of the
+        // vanilla chat component, e.g. "[Survival] " + chat.type.text.
+        // Walk the Text tree so only the actual message argument is parsed.
+        List<Text> siblings = original.getSiblings();
+        for (int i = 0; i < siblings.size(); i++) {
+            Text parsed = parseChatStructure(siblings.get(i));
+            if (parsed != null) {
+                MutableText copy = original.copy();
+                copy.getSiblings().set(i, parsed);
+                return copy;
+            }
+        }
+        return null;
+    }
+
+    private static Text parseDirectChatStructure(Text original) {
         TextContent content = original.getContent();
         if (!(content instanceof TranslatableTextContent ttc)) {
             return null;
@@ -90,28 +112,35 @@ public final class ChatParser {
             return null;
         }
 
-        // chat.type.text: "<%s> %s" —— args[0]=sender, args[1]=message
+        // chat.type.text: "<%s> %s". Some chat plugins add a prefix argument;
+        // keep every argument before the sender untouched and always render
+        // only the final argument as the message body.
         if (KEY_CHAT_TEXT.equals(key) && args.length >= 2) {
-            Text sender = asText(args[0]);
-            Text message = asText(args[1]);
-            MutableText result = Text.empty();
-            result.append(Text.literal("<"));
+            int senderIndex = args.length - 2;
+            Text sender = asText(args[senderIndex]);
+            Text message = asText(args[args.length - 1]);
+            MutableText result = Text.empty().setStyle(original.getStyle());
+            for (int i = 0; i < senderIndex; i++) {
+                result.append(asText(args[i]));
+            }
+            result.append(Text.literal("<").setStyle(original.getStyle()));
             result.append(sender);
-            result.append(Text.literal("> "));
+            result.append(Text.literal("> ").setStyle(original.getStyle()));
             result.append(renderTextBody(message));
             return result;
         }
 
-        // chat.type.team.text: "%s <%s> %s" —— args[0]=team prefix, args[1]=sender, args[2]=message
+        // chat.type.team.text: "%s <%s> %s" —— args[0]=team prefix,
+        // args[1]=sender, args[2]=message.
         if (KEY_CHAT_TEAM_TEXT.equals(key) && args.length >= 3) {
             Text teamPrefix = asText(args[0]);
             Text sender = asText(args[1]);
             Text message = asText(args[2]);
-            MutableText result = Text.empty();
+            MutableText result = Text.empty().setStyle(original.getStyle());
             result.append(teamPrefix);
-            result.append(Text.literal(" <"));
+            result.append(Text.literal(" <").setStyle(original.getStyle()));
             result.append(sender);
-            result.append(Text.literal("> "));
+            result.append(Text.literal("> ").setStyle(original.getStyle()));
             result.append(renderTextBody(message));
             return result;
         }
@@ -228,6 +257,25 @@ public final class ChatParser {
     }
 
     /**
+     * Re-render a source string recovered from ChatHud while preserving a
+     * textual chat prefix such as {@code [Survival] <Player> }.
+     */
+    public static Text renderSourcePreservingChatPrefix(String source) {
+        if (source == null || source.isEmpty()) {
+            return renderSource(source);
+        }
+        int close = source.indexOf("> ");
+        int open = close < 0 ? -1 : source.lastIndexOf('<', close);
+        if (open < 0 || open >= close) {
+            return renderSource(source);
+        }
+        MutableText result = Text.empty();
+        result.append(Text.literal(source.substring(0, close + 2)));
+        result.append(renderSource(source.substring(close + 2)));
+        return result;
+    }
+
+    /**
      * 从聊天 Text 中提取消息体字符串 (剥离 {@code <sender> } 前缀).
      *
      * <p>用于多行块状态机判断: 只对消息体部分判断是否开始 / 结束代码块或 LaTeX 块,
@@ -235,7 +283,7 @@ public final class ChatParser {
      *
      * <p>识别规则:</p>
      * <ul>
-     *   <li>{@code chat.type.text} → 返回 args[1] (message).</li>
+     *   <li>{@code chat.type.text} → 返回最后一个参数 (message).</li>
      *   <li>{@code chat.type.team.text} → 返回 args[2] (message).</li>
      *   <li>其他 → 返回 {@link Text#getString()} (整段文本).</li>
      * </ul>
@@ -247,13 +295,13 @@ public final class ChatParser {
         if (original == null) {
             return "";
         }
-        TextContent content = original.getContent();
-        if (content instanceof TranslatableTextContent ttc) {
+        Text chatNode = findChatNode(original);
+        if (chatNode != null && chatNode.getContent() instanceof TranslatableTextContent ttc) {
             String key = ttc.getKey();
             Object[] args = ttc.getArgs();
             if (args != null) {
                 if (KEY_CHAT_TEXT.equals(key) && args.length >= 2) {
-                    return asText(args[1]).getString();
+                    return asText(args[args.length - 1]).getString();
                 }
                 if (KEY_CHAT_TEAM_TEXT.equals(key) && args.length >= 3) {
                     return asText(args[2]).getString();
@@ -261,6 +309,24 @@ public final class ChatParser {
             }
         }
         return original.getString();
+    }
+
+    private static Text findChatNode(Text text) {
+        if (text == null) {
+            return null;
+        }
+        TextContent content = text.getContent();
+        if (content instanceof TranslatableTextContent ttc
+                && (KEY_CHAT_TEXT.equals(ttc.getKey()) || KEY_CHAT_TEAM_TEXT.equals(ttc.getKey()))) {
+            return text;
+        }
+        for (Text sibling : text.getSiblings()) {
+            Text found = findChatNode(sibling);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     /**
