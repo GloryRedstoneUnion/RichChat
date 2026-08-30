@@ -20,11 +20,13 @@ import java.util.Optional;
  *   <li>数据行: {@code | a | b | c |}</li>
  * </ol>
  *
- * <p>渲染输出为对齐的文本表格:</p>
+ * <p>渲染输出为使用 Minecraft 等宽字体的盒式表格:</p>
  * <pre>
- * | h1 | h2 | h3 |
- * |:--:|:---|--:|
- * | a  | b  | c  |
+ * ┌────┬────┬────┐
+ * │ h1 │ h2 │ h3 │
+ * ├────┼────┼────┤
+ * │ a  │ b  │ c  │
+ * └────┴────┴────┘
  * </pre>
  *
  * <p>表头加粗, 数据行按对齐方式 (左 / 中 / 右) 填充空格. 列宽取该列所有单元格
@@ -42,6 +44,17 @@ public final class TableRenderer {
     /** 单元格对齐方式. */
     private enum Alignment { LEFT, CENTER, RIGHT }
 
+    /** Width/padding adapter. The client supplies real TextRenderer pixel metrics. */
+    public interface Metrics {
+        int width(Text text);
+
+        int spaceWidth();
+
+        String spaces(int width);
+
+        String rule(int width);
+    }
+
     private TableRenderer() {
     }
 
@@ -52,16 +65,22 @@ public final class TableRenderer {
      * @return 渲染后的 Text; 行数不足 2 时按普通文本换行输出.
      */
     public static Text render(List<String> lines) {
+        return renderWithMetrics(lines, defaultMetrics());
+    }
+
+    /** Render using a caller-provided width model, normally Minecraft's pixel renderer. */
+    public static Text renderWithMetrics(List<String> lines, Metrics metrics) {
         if (lines == null || lines.isEmpty()) {
             return Text.empty();
         }
-        if (lines.size() < 2) {
-            MutableText result = Text.empty();
-            for (int i = 0; i < lines.size(); i++) {
-                if (i > 0) result.append(Text.literal("\n"));
-                result.append(Text.literal(lines.get(i)));
-            }
-            return result;
+        if (metrics == null) {
+            metrics = defaultMetrics();
+        }
+        if (lines.size() < 2 || !isTableSeparator(lines.get(1))) {
+            return renderAsPlainLines(lines);
+        }
+        if (lines.get(0) == null || !isTableRow(lines.get(0))) {
+            return renderAsPlainLines(lines);
         }
 
         // 1. 解析每行为 cells (字符串形式)
@@ -95,32 +114,41 @@ public final class TableRenderer {
                 // 渲染单元格内容 (LaTeX + Markdown)
                 // GFM cells are single-line blocks. Normalize accidental line
                 // breaks before measuring so one cell cannot split the HUD row.
-                Text rendered = ChatParser.renderSource(cell.replace('\n', ' ').replace('\r', ' '));
-                cellTexts[r][c] = applyBaseColor(rendered, r == 0 ? "tableHeader" : "tableBody");
-                int w = visibleLength(rendered);
+                String category = r == 0 ? "tableHeader" : "tableBody";
+                Style baseStyle = Style.EMPTY
+                        .withColor(RichChatConfig.INSTANCE.getColor(category))
+                        .withFont(TABLE_FONT);
+                Text rendered = ChatParser.renderSource(
+                        cell.replace('\n', ' ').replace('\r', ' '), baseStyle);
+                if (r == 0) {
+                    rendered = makeBold(rendered);
+                }
+                cellTexts[r][c] = rendered;
+                int w = metrics.width(rendered);
                 cellWidths[r][c] = w;
                 colWidths[c] = Math.max(colWidths[c], w);
             }
         }
 
-        // 4. 渲染
+        // 4. 渲染为盒式布局。Markdown 的分隔行是语法，不应直接显示在
+        // 聊天栏里；显式边框也比裸 | 和 --- 更接近 VS Code/Codex 表格。
         MutableText result = Text.empty();
 
-        // 表头 (加粗)
-        result.append(renderRow(cellTexts[0], cellWidths[0], aligns, colWidths, true));
-        result.append(Text.literal("\n").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
+        result.append(renderBorder(colWidths, '┌', '┬', '┐', metrics));
+        result.append(newline());
+        result.append(renderRow(cellTexts[0], cellWidths[0], aligns, colWidths, true, metrics));
+        result.append(newline());
 
-        // 分隔线
-        result.append(renderSeparator(aligns, colWidths));
-        result.append(Text.literal("\n"));
+        result.append(renderBorder(colWidths, '├', '┼', '┤', metrics));
 
         // 数据行
         for (int i = 2; i < rowCount; i++) {
-            result.append(renderRow(cellTexts[i], cellWidths[i], aligns, colWidths, false));
-            if (i < rowCount - 1) {
-                result.append(Text.literal("\n").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
-            }
+            result.append(newline());
+            result.append(renderRow(cellTexts[i], cellWidths[i], aligns, colWidths, false, metrics));
         }
+
+        result.append(newline());
+        result.append(renderBorder(colWidths, '└', '┴', '┘', metrics));
 
         return result;
     }
@@ -203,12 +231,12 @@ public final class TableRenderer {
      * @param bold        是否加粗 (表头为 true).
      */
     private static Text renderRow(Text[] cellTexts, int[] cellWidths,
-                                  Alignment[] aligns, int[] colWidths, boolean bold) {
+                                  Alignment[] aligns, int[] colWidths, boolean bold, Metrics metrics) {
         MutableText row = Text.empty();
         Style pipeStyle = Style.EMPTY.withFont(TABLE_FONT);
         if (bold) pipeStyle = pipeStyle.withBold(true);
         Style padStyle = Style.EMPTY.withFont(TABLE_FONT);
-        row.append(Text.literal("|").setStyle(pipeStyle));
+        row.append(Text.literal("│").setStyle(pipeStyle));
         for (int c = 0; c < colWidths.length; c++) {
             Text cellText = c < cellTexts.length ? cellTexts[c] : Text.empty();
             int cellW = c < cellWidths.length ? cellWidths[c] : 0;
@@ -223,16 +251,11 @@ public final class TableRenderer {
             int rightPad = pad - leftPad;
 
             row.append(Text.literal(" ").setStyle(padStyle));
-            if (leftPad > 0) row.append(Text.literal(" ".repeat(leftPad)).setStyle(padStyle));
-            // 单元格内容: 若表头, 给内容加粗
-            if (bold) {
-                row.append(makeBold(cellText));
-            } else {
-                row.append(cellText);
-            }
-            if (rightPad > 0) row.append(Text.literal(" ".repeat(rightPad)).setStyle(padStyle));
+            if (leftPad > 0) row.append(Text.literal(metrics.spaces(leftPad)).setStyle(padStyle));
+            row.append(cellText);
+            if (rightPad > 0) row.append(Text.literal(metrics.spaces(rightPad)).setStyle(padStyle));
             row.append(Text.literal(" ").setStyle(padStyle));
-            row.append(Text.literal("|").setStyle(pipeStyle));
+            row.append(Text.literal("│").setStyle(pipeStyle));
         }
         return row;
     }
@@ -249,48 +272,57 @@ public final class TableRenderer {
         return result;
     }
 
-    private static Text applyBaseColor(Text text, String category) {
+    private static Metrics defaultMetrics() {
+        return new Metrics() {
+            @Override
+            public int width(Text text) {
+                return visibleLength(text);
+            }
+
+            @Override
+            public int spaceWidth() {
+                return 1;
+            }
+
+            @Override
+            public String spaces(int width) {
+                return " ".repeat(Math.max(0, width));
+            }
+
+            @Override
+            public String rule(int width) {
+                return "─".repeat(Math.max(1, width));
+            }
+        };
+    }
+
+    private static Text renderAsPlainLines(List<String> lines) {
         MutableText result = Text.empty();
-        net.minecraft.text.TextColor color = RichChatConfig.INSTANCE.getColor(category);
-        text.visit((style, string) -> {
-            Style cellStyle = color == null ? style : style.withColor(color);
-            result.append(Text.literal(string).setStyle(cellStyle.withFont(TABLE_FONT)));
-            return Optional.empty();
-        }, Style.EMPTY);
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) result.append(Text.literal("\n"));
+            result.append(Text.literal(lines.get(i) == null ? "" : lines.get(i)));
+        }
         return result;
     }
 
-    /**
-     * 渲染分隔行 (如 {@code |:---:|:---|---:|}).
-     */
-    private static Text renderSeparator(Alignment[] aligns, int[] colWidths) {
-        MutableText row = Text.empty();
-        row.append(Text.literal("|").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
-        for (int c = 0; c < colWidths.length; c++) {
-            String sep = makeSeparator(colWidths[c], aligns[c]);
-            row.append(Text.literal(" " + sep + " ").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
-            row.append(Text.literal("|").setStyle(Style.EMPTY.withFont(TABLE_FONT)));
-        }
-        return row;
+    private static Text newline() {
+        return Text.literal("\n").setStyle(Style.EMPTY.withFont(TABLE_FONT));
     }
 
-    /**
-     * 生成指定宽度的分隔线段.
-     *
-     * <ul>
-     *   <li>居中: {@code :---:} (2 个冒号 + (w-2) 个 -)</li>
-     *   <li>右对齐: {@code ---:} ((w-1) 个 - + 1 个 :)</li>
-     *   <li>左对齐: {@code :---} (1 个 : + (w-1) 个 -)</li>
-     * </ul>
-     */
-    private static String makeSeparator(int width, Alignment align) {
-        if (width <= 1) return "-";
-        return switch (align) {
-            case CENTER -> ":" + "-".repeat(width - 2) + ":";
-            case RIGHT -> "-".repeat(width - 1) + ":";
-            case LEFT -> ":" + "-".repeat(width - 1);
-        };
+    /** Draw a full-width box border using the same fixed-width font as cells. */
+    private static Text renderBorder(int[] colWidths, char left, char middle, char right, Metrics metrics) {
+        MutableText border = Text.empty();
+        Style style = Style.EMPTY.withFont(TABLE_FONT)
+                .withColor(RichChatConfig.INSTANCE.getColor("tableBody"));
+        border.append(Text.literal(String.valueOf(left)).setStyle(style));
+        for (int c = 0; c < colWidths.length; c++) {
+            border.append(Text.literal(metrics.rule(colWidths[c] + metrics.spaceWidth() * 2)).setStyle(style));
+            border.append(Text.literal(String.valueOf(c == colWidths.length - 1 ? right : middle))
+                    .setStyle(style));
+        }
+        return border;
     }
+
 
     /**
      * 计算渲染后 Text 的 Unicode 显示宽度 (用 visit 展开).

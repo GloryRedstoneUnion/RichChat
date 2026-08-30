@@ -1,6 +1,7 @@
 package com.example.richchat.mixin;
 
 import com.example.richchat.config.RichChatConfig;
+import com.example.richchat.client.ClientTableRenderer;
 import com.example.richchat.parse.ChatParser;
 import com.example.richchat.parse.MultiLineBlockTracker;
 import com.example.richchat.render.SourceHoverHelper;
@@ -95,7 +96,7 @@ public abstract class ChatHudMixin {
             case RENDER_TABLE -> {
                 // 表格闭合, 先渲染表格, 再把当前行按 NORMAL 处理
                 boolean showHover = RichChatConfig.INSTANCE.isShowSourceOnHover();
-                Text tableRendered = ChatParser.renderTable(result.tableBodies);
+                Text tableRendered = ClientTableRenderer.render(result.tableBodies);
                 String tableSource = ChatParser.buildTableSource(result.tableBodies);
                 Text tableWithHover = SourceHoverHelper.withSourceHover(tableRendered, tableSource, showHover);
                 ci.cancel();

@@ -3,6 +3,7 @@ package com.example.richchat.client;
 import com.example.richchat.config.RichChatConfig;
 import com.example.richchat.mixin.ChatHudAccessor;
 import com.example.richchat.parse.ChatParser;
+import com.example.richchat.parse.TableRenderer;
 import com.example.richchat.render.SourceHoverHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.hud.ChatHud;
@@ -84,7 +85,7 @@ public final class ChatRefreshManager {
             if (enabled) {
                 // 直接走字符串渲染 (不识别聊天前缀, 因为刷新时已经丢失了原 TranslatableText 结构)
                 // 但保留原始 source 的字符串渲染结果
-                newContent = ChatParser.renderSource(source);
+                newContent = renderSource(source);
                 newContent = SourceHoverHelper.withSourceHover(newContent, source, showHover);
             } else {
                 // 关闭: 显示原始 source, 不渲染, 不悬停
@@ -127,5 +128,15 @@ public final class ChatRefreshManager {
             return rendered.getString();
         }
         return hoverValue.getString();
+    }
+
+    private static Text renderSource(String source) {
+        if (source != null) {
+            String[] lines = source.split("\\n", -1);
+            if (lines.length >= 2 && TableRenderer.isTableSeparator(lines[1])) {
+                return ClientTableRenderer.render(java.util.Arrays.asList(lines));
+            }
+        }
+        return ChatParser.renderSource(source);
     }
 }

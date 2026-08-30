@@ -199,9 +199,28 @@ public final class ChatParser {
      * @return 渲染后的 Text.
      */
     public static Text renderSource(String source) {
+        return renderSource(source, Style.EMPTY);
+    }
+
+    /**
+     * 渲染字符串并使用指定样式作为普通文本的基础样式.
+     *
+     * <p>表格单元格使用此入口提供表头/表体颜色；Markdown 和 LaTeX
+     * 的语义颜色仍会在其对应片段上覆盖基础颜色.</p>
+     *
+     * @param source    原始字符串.
+     * @param baseStyle 普通文本基础样式.
+     * @return 渲染后的 Text.
+     */
+    public static Text renderSource(String source, Style baseStyle) {
         MutableText result = Text.empty();
+        if (baseStyle == null) {
+            baseStyle = Style.EMPTY;
+        }
         for (LatexUnicodeRenderer.Segment part : LatexUnicodeRenderer.renderSegments(source)) {
-            Style style = part.formula() ? Style.EMPTY.withColor(RichChatConfig.INSTANCE.getColor("latex")) : Style.EMPTY;
+            Style style = part.formula()
+                    ? baseStyle.withColor(RichChatConfig.INSTANCE.getColor("latex"))
+                    : baseStyle;
             String sourceText = part.formula() ? part.text() : LatexUnicodeRenderer.renderBare(part.text());
             result.append(MarkdownRenderer.render(sourceText, style));
         }
@@ -277,7 +296,7 @@ public final class ChatParser {
      * {@link TableRenderer#render} 进行对齐渲染.</p>
      *
      * @param tableBodies 表格行列表 (每行为已剥离聊天前缀的消息体).
-     * @return 渲染后的 Text (对齐的 ASCII 表格).
+     * @return 渲染后的 Text (盒式表格; 客户端入口会进一步使用像素测量).
      */
     public static Text renderTable(java.util.List<String> tableBodies) {
         return TableRenderer.render(tableBodies);

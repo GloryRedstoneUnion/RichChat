@@ -109,7 +109,7 @@ class RendererTest {
                 "| 3 | 侦测器 | 15 | 脉冲 | \\delta(t) |"));
 
         String[] rows = rendered.getString().split("\\n", -1);
-        assertEquals(5, rows.length);
+        assertEquals(7, rows.length);
         int lineWidth = TableRenderer.displayWidth(rows[0]);
         for (String row : rows) {
             assertEquals(lineWidth, TableRenderer.displayWidth(row), row);
@@ -117,6 +117,20 @@ class RendererTest {
         assertTrue(rendered.getString().contains("¬ x"));
         assertTrue(rendered.getString().contains("δ(t)"));
         assertFalse(rendered.getString().contains("\\neg"));
+    }
+
+    @Test
+    void tableUsesVisibleBoxLayoutInsteadOfMarkdownSeparatorSyntax() {
+        Text rendered = TableRenderer.render(List.of(
+                "| 方块 | 硬度 | 工具 |",
+                "|---|---:|:---:|",
+                "| 泥土 | 0.5 | 锹 |"));
+        String value = rendered.getString();
+        assertTrue(value.startsWith("┌"));
+        assertTrue(value.contains("│ 方块"));
+        assertTrue(value.contains("├"));
+        assertTrue(value.endsWith("┘"));
+        assertFalse(value.contains("---"));
     }
 
     @Test
@@ -143,6 +157,34 @@ class RendererTest {
             return java.util.Optional.empty();
         }, Style.EMPTY);
         assertTrue(allUniform[0]);
+    }
+
+    @Test
+    void tableKeepsSemanticColorsInsideCells() {
+        Text rendered = TableRenderer.render(List.of(
+                "| Header | Formula | Code |",
+                "|---|---|---|",
+                "| **bold** | $x^2$ | `code` |"));
+        final boolean[] foundLatex = {false};
+        final boolean[] foundCode = {false};
+        rendered.visit((style, string) -> {
+            int color = style.getColor() == null ? -1 : style.getColor().getRgb();
+            if (0xB5CEA8 == color && string.contains("x²")) foundLatex[0] = true;
+            if (0xCE9178 == color && string.contains("code")) foundCode[0] = true;
+            return java.util.Optional.empty();
+        }, Style.EMPTY);
+        assertTrue(foundLatex[0]);
+        assertTrue(foundCode[0]);
+    }
+
+    @Test
+    void malformedTableInputFallsBackToSourceLines() {
+        Text rendered = TableRenderer.render(List.of(
+                "| Header | Value |",
+                "not a separator",
+                "| body | 1 |"));
+        assertEquals("| Header | Value |\nnot a separator\n| body | 1 |", rendered.getString());
+        assertFalse(rendered.getString().contains("┌"));
     }
 
     @Test
