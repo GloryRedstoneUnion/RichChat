@@ -108,6 +108,10 @@ $$
 | `/richchat color <category> <#RRGGBB>` | 设置颜色并立即刷新聊天 |
 | `/richchat color reset <category|all>` | 恢复默认颜色 |
 
+可用类别包括 `plain`、`bold`、`italic`、`strikethrough`、`list`、`inlineCode`、`codeBlock`、
+`link`、`heading1`-`heading6`、`quote`、`latex`、`tableHeader` 和 `tableBody`；输入命令时会自动补全，
+类别和值不合法会在执行前显示为错误。
+
 命令仅注册在客户端，无需服务端权限。
 
 ### 配置文件

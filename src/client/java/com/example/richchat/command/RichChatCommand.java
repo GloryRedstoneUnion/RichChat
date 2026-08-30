@@ -22,6 +22,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
  *   <li>{@code /richchat toggle} —— 开关渲染功能.</li>
  *   <li>{@code /richchat status} —— 查看当前状态.</li>
  *   <li>{@code /richchat reload} —— 重载配置文件.</li>
+ *   <li>{@code /richchat color} —— 查看或修改语义颜色.</li>
  * </ul>
  *
  * <p>所有子命令均为客户端命令, 无需服务端权限.</p>
@@ -58,10 +59,14 @@ public final class RichChatCommand {
                         .then(ClientCommandManager.literal(SUB_COLOR)
                                 .executes(RichChatCommand::colors)
                                 .then(ClientCommandManager.literal("reset")
-                                        .then(ClientCommandManager.argument("category", StringArgumentType.word())
+                                        .then(ClientCommandManager.argument("category", RichChatColorArgumentType.resetCategory())
+                                                .suggests((context, builder) -> RichChatColorArgumentType
+                                                        .suggestCategories(context, builder, true))
                                                 .executes(RichChatCommand::resetColor)))
-                                .then(ClientCommandManager.argument("category", StringArgumentType.word())
-                                        .then(ClientCommandManager.argument("value", StringArgumentType.word())
+                                .then(ClientCommandManager.argument("category", RichChatColorArgumentType.category())
+                                        .suggests((context, builder) -> RichChatColorArgumentType
+                                                .suggestCategories(context, builder, false))
+                                        .then(ClientCommandManager.argument("value", RichChatColorArgumentType.hex())
                                                 .executes(RichChatCommand::setColor))))
         );
         RichChatMod.LOGGER.info("[RichChat] 命令 /{} 已注册.", ROOT);
