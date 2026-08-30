@@ -94,6 +94,29 @@ class RendererTest {
     }
 
     @Test
+    void prefixedTableRowsReachTheTableStateMachine() {
+        MultiLineBlockTracker tracker = new MultiLineBlockTracker();
+        Text header = Text.literal("[Survival] <Chat> | Name | Value |");
+        Text separator = Text.literal("[Survival] <Chat> |---|---|");
+        Text body = Text.literal("[Survival] <Chat> | one | 1 |");
+        String headerBody = ChatParser.extractMessageBody(header);
+        String separatorBody = ChatParser.extractMessageBody(separator);
+        String dataBody = ChatParser.extractMessageBody(body);
+
+        assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
+                tracker.process(header, headerBody).type);
+        assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
+                tracker.process(separator, separatorBody).type);
+        assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
+                tracker.process(body, dataBody).type);
+
+        MultiLineBlockTracker.Result result = tracker.process(
+                Text.literal("[Survival] <Chat> # next"), "# next");
+        assertEquals(MultiLineBlockTracker.ActionType.RENDER_TABLE, result.type);
+        assertEquals(List.of("| Name | Value |", "|---|---|", "| one | 1 |"), result.tableBodies);
+    }
+
+    @Test
     void markdownKeepsNestedStylesAndEscapedMarkers() {
         Text rendered = MarkdownRenderer.render("**bold *and italic*** \\*literal\\* [link](https://example.com)");
         assertEquals("bold and italic *literal* link", rendered.getString());
