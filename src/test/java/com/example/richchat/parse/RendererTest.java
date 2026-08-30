@@ -80,6 +80,12 @@ class RendererTest {
     }
 
     @Test
+    void flattenedPrefixedChatLiteralStillRendersOnlyItsBody() {
+        Text rendered = ChatParser.parse(Text.literal("[Survival] <Chat> # Modern heading"));
+        assertEquals("[Survival] <Chat> Modern heading", rendered.getString());
+    }
+
+    @Test
     void markdownKeepsNestedStylesAndEscapedMarkers() {
         Text rendered = MarkdownRenderer.render("**bold *and italic*** \\*literal\\* [link](https://example.com)");
         assertEquals("bold and italic *literal* link", rendered.getString());

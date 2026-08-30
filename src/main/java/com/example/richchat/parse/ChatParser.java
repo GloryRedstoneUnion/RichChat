@@ -63,6 +63,11 @@ public final class ChatParser {
             return structured;
         }
 
+        Text textualPrefix = parseTextualChatPrefix(original);
+        if (textualPrefix != null) {
+            return textualPrefix;
+        }
+
         // 第二层: 通用渲染 (非聊天消息或无法识别的结构)
         return renderTextBody(original);
     }
@@ -264,15 +269,44 @@ public final class ChatParser {
         if (source == null || source.isEmpty()) {
             return renderSource(source);
         }
-        int close = source.indexOf("> ");
-        int open = close < 0 ? -1 : source.lastIndexOf('<', close);
-        if (open < 0 || open >= close) {
+        int bodyStart = findTextualChatBodyStart(source);
+        if (bodyStart < 0) {
             return renderSource(source);
         }
         MutableText result = Text.empty();
-        result.append(Text.literal(source.substring(0, close + 2)));
-        result.append(renderSource(source.substring(close + 2)));
+        result.append(Text.literal(source.substring(0, bodyStart)));
+        result.append(renderSource(source.substring(bodyStart)));
         return result;
+    }
+
+    private static Text parseTextualChatPrefix(Text original) {
+        if (original == null || !original.getSiblings().isEmpty()) {
+            return null;
+        }
+        String source = original.getString();
+        int bodyStart = findTextualChatBodyStart(source);
+        if (bodyStart < 0 || bodyStart >= source.length()) {
+            return null;
+        }
+        MutableText result = Text.empty().setStyle(original.getStyle());
+        result.append(Text.literal(source.substring(0, bodyStart)).setStyle(original.getStyle()));
+        result.append(renderTextBody(Text.literal(source.substring(bodyStart)).setStyle(original.getStyle())));
+        return result;
+    }
+
+    /** Return the first character after a textual "[prefix] <player> " header. */
+    private static int findTextualChatBodyStart(String source) {
+        int close = source.indexOf("> ");
+        int open = close < 0 ? -1 : source.lastIndexOf('<', close);
+        if (open < 0 || open >= close) {
+            return -1;
+        }
+        String beforePlayer = source.substring(0, open);
+        if (!beforePlayer.isEmpty()
+                && !(beforePlayer.startsWith("[") && beforePlayer.endsWith("] "))) {
+            return -1;
+        }
+        return close + 2;
     }
 
     /**
