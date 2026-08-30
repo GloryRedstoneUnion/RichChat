@@ -88,6 +88,12 @@ class RendererTest {
     }
 
     @Test
+    void messageBodyExtractionStripsTextualPrefixForTableDetection() {
+        assertEquals("| Name | Value |",
+                ChatParser.extractMessageBody(Text.literal("[Survival] <Chat> | Name | Value |")));
+    }
+
+    @Test
     void markdownKeepsNestedStylesAndEscapedMarkers() {
         Text rendered = MarkdownRenderer.render("**bold *and italic*** \\*literal\\* [link](https://example.com)");
         assertEquals("bold and italic *literal* link", rendered.getString());

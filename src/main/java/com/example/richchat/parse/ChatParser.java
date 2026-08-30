@@ -319,7 +319,8 @@ public final class ChatParser {
      * <ul>
      *   <li>{@code chat.type.text} → 返回最后一个参数 (message).</li>
      *   <li>{@code chat.type.team.text} → 返回 args[2] (message).</li>
-     *   <li>其他 → 返回 {@link Text#getString()} (整段文本).</li>
+     *   <li>其他 → 对纯文本聊天前缀剥离 {@code [频道] &lt;玩家&gt; } 后返回正文;
+     *       无法识别时返回 {@link Text#getString()}.</li>
      * </ul>
      *
      * @param original 原始 Text.
@@ -342,7 +343,9 @@ public final class ChatParser {
                 }
             }
         }
-        return original.getString();
+        String source = original.getString();
+        int bodyStart = findTextualChatBodyStart(source);
+        return bodyStart >= 0 ? source.substring(bodyStart) : source;
     }
 
     private static Text findChatNode(Text text) {
