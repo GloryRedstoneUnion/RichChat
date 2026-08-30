@@ -44,15 +44,26 @@ public final class TableRenderer {
     /** 单元格对齐方式. */
     private enum Alignment { LEFT, CENTER, RIGHT }
 
-    /** Width/padding adapter. The client supplies real TextRenderer pixel metrics. */
+    /**
+     * Width/padding adapter. The client supplies real TextRenderer pixel
+     * metrics; the headless fallback uses display-column units.
+     */
     public interface Metrics {
+        /** Return the rendered width in this metrics implementation's units. */
         int width(Text text);
 
+        /** Width of one ordinary space in the same units. */
         int spaceWidth();
 
-        String spaces(int width);
+        /** Create padding without changing the caller's semantic color. */
+        Text padding(int width, Style style);
 
-        String rule(int width);
+        /**
+         * Create the horizontal segment following {@code leading}. The
+         * leading glyph is provided so pixel clients can compensate for
+         * different advances between box junctions and row separators.
+         */
+        Text rule(int width, char leading, Style style);
     }
 
     private TableRenderer() {
@@ -234,7 +245,6 @@ public final class TableRenderer {
                                   Alignment[] aligns, int[] colWidths, boolean bold, Metrics metrics) {
         MutableText row = Text.empty();
         Style pipeStyle = Style.EMPTY.withFont(TABLE_FONT);
-        if (bold) pipeStyle = pipeStyle.withBold(true);
         Style padStyle = Style.EMPTY.withFont(TABLE_FONT);
         row.append(Text.literal("│").setStyle(pipeStyle));
         for (int c = 0; c < colWidths.length; c++) {
@@ -251,9 +261,9 @@ public final class TableRenderer {
             int rightPad = pad - leftPad;
 
             row.append(Text.literal(" ").setStyle(padStyle));
-            if (leftPad > 0) row.append(Text.literal(metrics.spaces(leftPad)).setStyle(padStyle));
+            if (leftPad > 0) row.append(metrics.padding(leftPad, padStyle));
             row.append(cellText);
-            if (rightPad > 0) row.append(Text.literal(metrics.spaces(rightPad)).setStyle(padStyle));
+            if (rightPad > 0) row.append(metrics.padding(rightPad, padStyle));
             row.append(Text.literal(" ").setStyle(padStyle));
             row.append(Text.literal("│").setStyle(pipeStyle));
         }
@@ -285,13 +295,13 @@ public final class TableRenderer {
             }
 
             @Override
-            public String spaces(int width) {
-                return " ".repeat(Math.max(0, width));
+            public Text padding(int width, Style style) {
+                return Text.literal(" ".repeat(Math.max(0, width))).setStyle(style);
             }
 
             @Override
-            public String rule(int width) {
-                return "─".repeat(Math.max(1, width));
+            public Text rule(int width, char leading, Style style) {
+                return Text.literal("─".repeat(Math.max(1, width))).setStyle(style);
             }
         };
     }
@@ -315,10 +325,12 @@ public final class TableRenderer {
         Style style = Style.EMPTY.withFont(TABLE_FONT)
                 .withColor(RichChatConfig.INSTANCE.getColor("tableBody"));
         border.append(Text.literal(String.valueOf(left)).setStyle(style));
+        char leading = left;
         for (int c = 0; c < colWidths.length; c++) {
-            border.append(Text.literal(metrics.rule(colWidths[c] + metrics.spaceWidth() * 2)).setStyle(style));
-            border.append(Text.literal(String.valueOf(c == colWidths.length - 1 ? right : middle))
-                    .setStyle(style));
+            border.append(metrics.rule(colWidths[c] + metrics.spaceWidth() * 2, leading, style));
+            char next = c == colWidths.length - 1 ? right : middle;
+            border.append(Text.literal(String.valueOf(next)).setStyle(style));
+            leading = next;
         }
         return border;
     }

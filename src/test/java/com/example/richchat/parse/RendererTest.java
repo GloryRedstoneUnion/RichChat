@@ -224,6 +224,69 @@ class RendererTest {
     }
 
     @Test
+    void pixelMetricsKeepBordersAlignedWithRows() {
+        TableRenderer.Metrics pixelMetrics = new TableRenderer.Metrics() {
+            @Override
+            public int width(Text text) {
+                int width = 0;
+                for (int i = 0; i < text.getString().length(); i++) {
+                    char c = text.getString().charAt(i);
+                    width += c == ' ' ? 4 : boxAdvance(c);
+                }
+                return width;
+            }
+
+            @Override
+            public int spaceWidth() {
+                return 4;
+            }
+
+            @Override
+            public Text padding(int width, Style style) {
+                return Text.literal("p".repeat(Math.max(0, width))).setStyle(style);
+            }
+
+            @Override
+            public Text rule(int width, char leading, Style style) {
+                // Simulate a Minecraft font where row pipes advance 6px and
+                // box junctions advance 9px. A one-pixel rule glyph closes
+                // the exact gap after compensating for that 3px difference.
+                int leadingWidth = leading == '│' ? 6 : 9;
+                int length = Math.max(1, width + 6 - leadingWidth);
+                return Text.literal("r".repeat(length)).setStyle(style);
+            }
+        };
+        Text rendered = TableRenderer.renderWithMetrics(
+                List.of("| Name | Value |", "|---|---|", "| one | 1 |"), pixelMetrics);
+        String[] rows = rendered.getString().split("\\n", -1);
+        int rowWidth = pixelWidth(rows[1]);
+        assertEquals(rowWidth, pixelWidth(rows[0]));
+        assertEquals(rowWidth, pixelWidth(rows[2]));
+        assertEquals(rowWidth, pixelWidth(rows[3]));
+    }
+
+    private static int pixelWidth(String value) {
+        int width = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            width += switch (c) {
+                case ' ' -> 4;
+                default -> boxAdvance(c);
+            };
+        }
+        return width;
+    }
+
+    private static int boxAdvance(char c) {
+        return switch (c) {
+            case '│' -> 6;
+            case '┌', '┬', '├', '┼', '└', '┴' -> 9;
+            case '┐', '┤', '┘' -> 6;
+            default -> 1;
+        };
+    }
+
+    @Test
     void tableKeepsSemanticColorsInsideCells() {
         Text rendered = TableRenderer.render(List.of(
                 "| Header | Formula | Code |",
