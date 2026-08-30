@@ -27,17 +27,13 @@ import java.util.List;
  * <p>核心思路:</p>
  * <ol>
  *   <li>从 ChatHud 的 {@code messages} 字段取出所有 ChatHudLine.</li>
- *   <li>对每条 ChatHudLine 的 {@code content()} (已渲染 Text):
- *       <ul>
- *         <li>反推原始 source: 从根 Style 的 HoverEvent(SHOW_TEXT) 取出 value Text,
- *             再取其字符串. 该字符串即为渲染时存入的原始源码.</li>
- *         <li>若反推失败 (无 HoverEvent): 用 content().getString() 作为 source.</li>
- *       </ul>
- *   </li>
+ *   <li>对每条 ChatHudLine 的 {@code content()} (已渲染 Text) 优先查找入队时保存的
+ *       原始 {@code Text}; 旧消息没有登记信息时才从根 Style 的 HoverEvent 或文本内容
+ *       回退提取 source 字符串.</li>
  *   <li>根据当前 enabled 状态:
  *       <ul>
- *         <li>enabled=true → 重新走 ChatParser.parse(source) + 悬停.</li>
- *         <li>enabled=false → 直接 literal(source), 无悬停.</li>
+ *         <li>enabled=true → 对原始 {@code Text} 重新解析 (表格走表格渲染器) + 悬停.</li>
+ *         <li>enabled=false → {@code original.copy()}, 保留原始样式和交互.</li>
  *       </ul>
  *   </li>
  *   <li>用新 Text 构造新 ChatHudLine, 通过 List.set 原地替换.</li>
@@ -77,19 +73,34 @@ public final class ChatRefreshManager {
             ChatHudLine old = snapshot.get(i);
             Text oldContent = old.content();
 
-            // 反推原始 source
-            String source = extractSource(oldContent);
+            // Prefer the original component tree retained at message ingress.
+            // The hover source is only a compatibility fallback for messages
+            // created before the registry was populated.
+            Text original = SourceHoverHelper.getOriginal(oldContent);
+            String source;
+            if (original == null) {
+                source = extractSource(oldContent);
+                original = Text.literal(source);
+            } else {
+                // Do not mistake a vanilla HoverEvent on the original message
+                // for RichChat's source tooltip.
+                source = original.getString();
+            }
 
             // 重新渲染
             Text newContent;
             if (enabled) {
-                // 直接走字符串渲染 (不识别聊天前缀, 因为刷新时已经丢失了原 TranslatableText 结构)
-                // 但保留原始 source 的字符串渲染结果
-                newContent = renderSource(source);
-                newContent = SourceHoverHelper.withSourceHover(newContent, source, showHover);
+                // Reparse the original Text so structured chat prefixes and
+                // their styles remain intact. Tables are the one renderer
+                // that intentionally consumes a source-line collection.
+                newContent = renderSource(original, source);
+                newContent = SourceHoverHelper.withSourceHover(
+                        newContent, source, showHover, original);
             } else {
-                // 关闭: 显示原始 source, 不渲染, 不悬停
-                newContent = Text.literal(source);
+                // Disable is lossless: retain team colors, click events,
+                // hover events, and any other vanilla Style data.
+                newContent = original.copy();
+                SourceHoverHelper.rememberOriginal(newContent, original);
             }
 
             // 构造新 ChatHudLine 替换 (保留 creationTick / signature / indicator)
@@ -134,14 +145,14 @@ public final class ChatRefreshManager {
         return hoverValue.getString();
     }
 
-    private static Text renderSource(String source) {
+    private static Text renderSource(Text original, String source) {
         if (source != null) {
             String[] lines = source.split("\\n", -1);
             if (lines.length >= 2 && TableRenderer.isTableSeparator(lines[1])) {
                 return ClientTableRenderer.render(java.util.Arrays.asList(lines));
             }
         }
-        return ChatParser.renderSourcePreservingChatPrefix(source);
+        return ChatParser.parse(original);
     }
 
 }

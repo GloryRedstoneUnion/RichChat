@@ -6,6 +6,10 @@ import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 /**
  * 渲染辅助工具.
  *
@@ -15,6 +19,13 @@ import net.minecraft.util.Formatting;
  * 不使用 {@code minecraft:alt} 等宽字体, 因为该字体对中文显示为乱码.</p>
  */
 public final class SourceHoverHelper {
+
+    /**
+     * Keeps the original component tree alongside a rendered HUD component.
+     * Identity semantics are intentional: two equal-looking messages can have
+     * different team styles, click events, or hover events.
+     */
+    private static final Map<Text, Text> ORIGINALS = Collections.synchronizedMap(new IdentityHashMap<>());
 
     private SourceHoverHelper() {
     }
@@ -36,6 +47,29 @@ public final class SourceHoverHelper {
             return applyHover(target.copy(), source);
         }
         return applyHover((MutableText) target, source);
+    }
+
+    /**
+     * Attach the source hover and retain the original component tree for HUD
+     * toggle refreshes. The original is retained even when hover display is
+     * disabled, because the toggle must remain lossless in both directions.
+     */
+    public static Text withSourceHover(Text target, String source, boolean enabled, Text original) {
+        Text result = withSourceHover(target, source, enabled);
+        rememberOriginal(result, original);
+        return result;
+    }
+
+    /** Associate a rendered component with its original, unmodified component tree. */
+    public static void rememberOriginal(Text rendered, Text original) {
+        if (rendered != null && original != null) {
+            ORIGINALS.put(rendered, original);
+        }
+    }
+
+    /** Return the original component tree associated with a rendered component, if known. */
+    public static Text getOriginal(Text rendered) {
+        return rendered == null ? null : ORIGINALS.get(rendered);
     }
 
     /**

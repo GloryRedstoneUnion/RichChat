@@ -63,6 +63,9 @@ public abstract class ChatHudMixin {
         // 关闭时跳过所有转换逻辑, 并重置状态机避免遗留状态
         if (!RichChatConfig.INSTANCE.isEnabled()) {
             richchat$blockTracker.reset();
+            // Messages received while disabled still need to be recoverable
+            // when the renderer is enabled again.
+            SourceHoverHelper.rememberOriginal(message, message);
             return;
         }
         if (message == null) {
@@ -89,7 +92,9 @@ public abstract class ChatHudMixin {
                         ? ChatParser.renderMultiLineLatexBlock(result.content)
                         : ChatParser.renderMultiLineCodeBlock(result.content);
                 boolean showHover = RichChatConfig.INSTANCE.isShowSourceOnHover();
-                Text finalText = SourceHoverHelper.withSourceHover(blockRendered, result.source, showHover);
+                Text blockOriginal = Text.literal(result.source);
+                Text finalText = SourceHoverHelper.withSourceHover(
+                        blockRendered, result.source, showHover, blockOriginal);
                 ci.cancel();
                 richchat$readd(finalText, signature, indicator);
             }
@@ -98,12 +103,15 @@ public abstract class ChatHudMixin {
                 boolean showHover = RichChatConfig.INSTANCE.isShowSourceOnHover();
                 Text tableRendered = ClientTableRenderer.render(result.tableBodies);
                 String tableSource = ChatParser.buildTableSource(result.tableBodies);
-                Text tableWithHover = SourceHoverHelper.withSourceHover(tableRendered, tableSource, showHover);
+                Text tableOriginal = Text.literal(tableSource);
+                Text tableWithHover = SourceHoverHelper.withSourceHover(
+                        tableRendered, tableSource, showHover, tableOriginal);
                 ci.cancel();
                 richchat$readd(tableWithHover, signature, indicator);
                 // 当前行 (非表格行) 按 NORMAL 处理
                 Text normalRendered = ChatParser.parse(message);
-                Text normalWithHover = SourceHoverHelper.withSourceHover(normalRendered, source, showHover);
+                Text normalWithHover = SourceHoverHelper.withSourceHover(
+                        normalRendered, source, showHover, message);
                 richchat$readd(normalWithHover, signature, indicator);
             }
             case FALLBACK_NORMAL -> {
@@ -111,19 +119,22 @@ public abstract class ChatHudMixin {
                 boolean showHover = RichChatConfig.INSTANCE.isShowSourceOnHover();
                 Text flushRendered = ChatParser.parse(result.flushBefore);
                 String flushSource = result.flushBefore.getString();
-                Text flushWithHover = SourceHoverHelper.withSourceHover(flushRendered, flushSource, showHover);
+                Text flushWithHover = SourceHoverHelper.withSourceHover(
+                        flushRendered, flushSource, showHover, result.flushBefore);
                 ci.cancel();
                 richchat$readd(flushWithHover, signature, indicator);
                 // 当前行按 NORMAL 处理
                 Text normalRendered = ChatParser.parse(message);
-                Text normalWithHover = SourceHoverHelper.withSourceHover(normalRendered, source, showHover);
+                Text normalWithHover = SourceHoverHelper.withSourceHover(
+                        normalRendered, source, showHover, message);
                 richchat$readd(normalWithHover, signature, indicator);
             }
             case NORMAL -> {
                 // 正常渲染
                 Text transformed = ChatParser.parse(message);
                 boolean showHover = RichChatConfig.INSTANCE.isShowSourceOnHover();
-                Text finalText = SourceHoverHelper.withSourceHover(transformed, source, showHover);
+                Text finalText = SourceHoverHelper.withSourceHover(
+                        transformed, source, showHover, message);
                 ci.cancel();
                 richchat$readd(finalText, signature, indicator);
             }

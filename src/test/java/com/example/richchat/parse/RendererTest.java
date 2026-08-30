@@ -1,6 +1,8 @@
 package com.example.richchat.parse;
 
 import com.example.richchat.config.RichChatColors;
+import com.example.richchat.render.SourceHoverHelper;
+import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import org.junit.jupiter.api.Test;
@@ -239,5 +241,33 @@ class RendererTest {
         assertEquals("#C586C0", RichChatColors.defaultValue("heading4"));
         assertEquals("#9CDCFE", RichChatColors.defaultValue("heading5"));
         assertEquals("#CE9178", RichChatColors.defaultValue("heading6"));
+    }
+
+    @Test
+    void sourceRegistryRestoresOriginalStylesAndInteractionsAfterToggle() {
+        Style sourceStyle = Style.EMPTY.withColor(0x55FF55)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/msg Chat hi"));
+        Text original = Text.empty()
+                .append(Text.literal("[Survival] ").setStyle(sourceStyle))
+                .append(Text.translatable("chat.type.text", Text.literal("Chat"),
+                        Text.literal("**bold** $x^2$")));
+        Text rendered = ChatParser.parse(original);
+
+        Text tracked = SourceHoverHelper.withSourceHover(rendered, original.getString(), false, original);
+        Text restored = SourceHoverHelper.getOriginal(tracked).copy();
+
+        assertEquals(original.getString(), restored.getString());
+        final boolean[] preserved = {false};
+        restored.visit((style, string) -> {
+            if (string.contains("[Survival] ")) {
+                preserved[0] = sourceStyle.getColor().equals(style.getColor())
+                        && sourceStyle.getClickEvent().equals(style.getClickEvent());
+            }
+            return java.util.Optional.empty();
+        }, Style.EMPTY);
+        assertTrue(preserved[0]);
+
+        Text reenabled = ChatParser.parse(SourceHoverHelper.getOriginal(tracked));
+        assertEquals("[Survival] <Chat> bold x²", reenabled.getString());
     }
 }
