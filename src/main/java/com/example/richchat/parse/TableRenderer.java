@@ -40,6 +40,8 @@ public final class TableRenderer {
 
     /** Fixed-width font supplied by Minecraft; proportional glyphs cannot align a text table. */
     private static final Identifier TABLE_FONT = Identifier.of("minecraft", "uniform");
+    private static final String PIXEL_SPACE = "\uE000";
+    private static final String BACK_ONE_PIXEL = "\uE001";
 
     /** 单元格对齐方式. */
     private enum Alignment { LEFT, CENTER, RIGHT }
@@ -67,6 +69,22 @@ public final class TableRenderer {
     }
 
     private TableRenderer() {
+    }
+
+    /**
+     * Build a horizontal rule with an exact pixel advance using the spacing
+     * font's one-pixel glyphs. Minecraft draws strikethrough rectangles one
+     * pixel before the glyph cursor, so the leading/trailing corrections keep
+     * the visible stroke inside the two junctions without changing layout.
+     */
+    public static Text renderPixelRule(int advance, Style style, Identifier spacingFont) {
+        int length = Math.max(1, advance);
+        Style spacingStyle = (style == null ? Style.EMPTY : style).withFont(spacingFont);
+        return Text.empty()
+                .append(Text.literal(PIXEL_SPACE).setStyle(spacingStyle))
+                .append(Text.literal(PIXEL_SPACE.repeat(length))
+                        .setStyle(spacingStyle.withStrikethrough(true)))
+                .append(Text.literal(BACK_ONE_PIXEL).setStyle(spacingStyle));
     }
 
     /**

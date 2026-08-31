@@ -1,7 +1,8 @@
 # RichChat
 
-## 1.2.0
+## 1.2.1
 
+- 修复 Minecraft 聊天栏 Markdown 表格横向边框的像素级错位，确保横线精确落在两侧 junction 之间。
 - 使用 Minecraft 原生 `uniform` 等宽字体对齐代码块和 Markdown 表格。
 - 采用 VS Code 风格的代码、链接、标题和公式颜色，并补充颜色命令提示。
 - 增加 `\max`、`\min`、`\lim` 和三角函数等常见 LaTeX 运算符。
@@ -39,7 +40,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 
 ### 方式一：使用预构建 jar
 
-1. 下载 `RichChat-1.2.0.jar`
+1. 下载 `RichChat-1.2.1.jar`
 2. 将其放入 `.minecraft/mods/` 目录
 3. 确保 `fabric-api-0.92.2+1.20.1.jar` 也已在 mods 目录
 4. 启动 Minecraft 1.20.1（Fabric Loader）
@@ -50,7 +51,7 @@ RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中
 git clone <repo-url>
 cd RichChat
 ./gradlew build
-# 产物: build/libs/RichChat-1.2.0.jar
+# 产物: build/libs/RichChat-1.2.1.jar
 ```
 
 ## 使用方法

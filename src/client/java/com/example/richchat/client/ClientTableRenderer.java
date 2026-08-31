@@ -14,7 +14,6 @@ public final class ClientTableRenderer {
     private static final Identifier TABLE_FONT = Identifier.of("minecraft", "uniform");
     private static final Identifier SPACING_FONT = Identifier.of("richchat", "table_spacing");
     private static final String PIXEL_SPACE = "\uE000";
-    private static final String BACK_ONE_PIXEL = "\uE001";
 
     private ClientTableRenderer() {
     }
@@ -54,15 +53,7 @@ public final class ClientTableRenderer {
                 int leadingWidth = renderer.getWidth(
                         Text.literal(String.valueOf(leading)).setStyle(fontStyle));
                 int advance = Math.max(1, width + pipeWidth - leadingWidth);
-
-                // Pull the synthetic line one pixel into the box glyph so the
-                // rasterized strokes touch, while preserving the exact total
-                // advance required for the next vertical separator.
-                return Text.empty()
-                        .append(Text.literal(BACK_ONE_PIXEL)
-                                .setStyle(style.withFont(SPACING_FONT)))
-                        .append(Text.literal(PIXEL_SPACE.repeat(advance + 1))
-                                .setStyle(style.withFont(SPACING_FONT).withStrikethrough(true)));
+                return TableRenderer.renderPixelRule(advance, style, SPACING_FONT);
             }
         };
         return TableRenderer.renderWithMetrics(lines, metrics);

@@ -265,6 +265,24 @@ class RendererTest {
         assertEquals(rowWidth, pixelWidth(rows[3]));
     }
 
+    @Test
+    void pixelRuleKeepsStrikeSpanInsideJunctions() {
+        Style style = Style.EMPTY.withColor(0xD4D4D4);
+        Text rule = TableRenderer.renderPixelRule(
+                5, style, net.minecraft.util.Identifier.of("richchat", "table_spacing"));
+
+        // The correction glyph must precede the strikethrough span. The old
+        // order moved the first rectangle two pixels left of the junction.
+        assertEquals("\uE000\uE000\uE000\uE000\uE000\uE000\uE001", rule.getString());
+        assertEquals(3, rule.getSiblings().size());
+        assertEquals("\uE000", rule.getSiblings().get(0).getString());
+        assertEquals("\uE000\uE000\uE000\uE000\uE000", rule.getSiblings().get(1).getString());
+        assertEquals("\uE001", rule.getSiblings().get(2).getString());
+        assertFalse(rule.getSiblings().get(0).getStyle().isStrikethrough());
+        assertTrue(rule.getSiblings().get(1).getStyle().isStrikethrough());
+        assertFalse(rule.getSiblings().get(2).getStyle().isStrikethrough());
+    }
+
     private static int pixelWidth(String value) {
         int width = 0;
         for (int i = 0; i < value.length(); i++) {
