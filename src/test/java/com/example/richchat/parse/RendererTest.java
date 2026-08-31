@@ -271,16 +271,17 @@ class RendererTest {
         Text rule = TableRenderer.renderPixelRule(
                 5, style, net.minecraft.util.Identifier.of("richchat", "table_spacing"));
 
-        // The correction glyph must precede the strikethrough span. The old
-        // order moved the first rectangle two pixels left of the junction.
-        assertEquals("\uE000\uE000\uE000\uE000\uE000\uE000\uE001", rule.getString());
+        // The leading spacer compensates for the renderer's left inset and
+        // the zero-width terminal glyph closes the right edge without adding
+        // advance. The old order moved the stroke outside the junctions.
+        assertEquals("\uE000\uE000\uE000\uE000\uE000\uE002", rule.getString());
         assertEquals(3, rule.getSiblings().size());
         assertEquals("\uE000", rule.getSiblings().get(0).getString());
-        assertEquals("\uE000\uE000\uE000\uE000\uE000", rule.getSiblings().get(1).getString());
-        assertEquals("\uE001", rule.getSiblings().get(2).getString());
+        assertEquals("\uE000\uE000\uE000\uE000", rule.getSiblings().get(1).getString());
+        assertEquals("\uE002", rule.getSiblings().get(2).getString());
         assertFalse(rule.getSiblings().get(0).getStyle().isStrikethrough());
         assertTrue(rule.getSiblings().get(1).getStyle().isStrikethrough());
-        assertFalse(rule.getSiblings().get(2).getStyle().isStrikethrough());
+        assertTrue(rule.getSiblings().get(2).getStyle().isStrikethrough());
     }
 
     private static int pixelWidth(String value) {
