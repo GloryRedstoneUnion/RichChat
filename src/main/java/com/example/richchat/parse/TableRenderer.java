@@ -99,8 +99,22 @@ public final class TableRenderer {
         return renderWithMetrics(lines, defaultMetrics());
     }
 
+    /** Render a streaming snapshot without the outer top and bottom borders. */
+    public static Text renderLive(List<String> lines) {
+        return renderLiveWithMetrics(lines, defaultMetrics());
+    }
+
     /** Render using a caller-provided width model, normally Minecraft's pixel renderer. */
     public static Text renderWithMetrics(List<String> lines, Metrics metrics) {
+        return renderWithMetrics(lines, metrics, false);
+    }
+
+    /** Render a streaming snapshot using a caller-provided width model. */
+    public static Text renderLiveWithMetrics(List<String> lines, Metrics metrics) {
+        return renderWithMetrics(lines, metrics, true);
+    }
+
+    private static Text renderWithMetrics(List<String> lines, Metrics metrics, boolean live) {
         if (lines == null || lines.isEmpty()) {
             return Text.empty();
         }
@@ -165,12 +179,16 @@ public final class TableRenderer {
         // 聊天栏里；显式边框也比裸 | 和 --- 更接近 VS Code/Codex 表格。
         MutableText result = Text.empty();
 
-        result.append(renderBorder(colWidths, '┌', '┬', '┐', metrics));
-        result.append(newline());
+        if (!live) {
+            result.append(renderBorder(colWidths, '┌', '┬', '┐', metrics));
+            result.append(newline());
+        }
         result.append(renderRow(cellTexts[0], cellWidths[0], aligns, colWidths, true, metrics));
         result.append(newline());
 
-        result.append(renderBorder(colWidths, '├', '┼', '┤', metrics));
+        result.append(live
+                ? renderHeaderSeparator(colWidths, metrics)
+                : renderBorder(colWidths, '├', '┼', '┤', metrics));
 
         // 数据行
         for (int i = 2; i < rowCount; i++) {
@@ -178,8 +196,10 @@ public final class TableRenderer {
             result.append(renderRow(cellTexts[i], cellWidths[i], aligns, colWidths, false, metrics));
         }
 
-        result.append(newline());
-        result.append(renderBorder(colWidths, '└', '┴', '┘', metrics));
+        if (!live) {
+            result.append(newline());
+            result.append(renderBorder(colWidths, '└', '┴', '┘', metrics));
+        }
 
         return result;
     }
@@ -353,6 +373,26 @@ public final class TableRenderer {
             leading = next;
         }
         return border;
+    }
+
+    /**
+     * Draw the live header separator with the same vertical-pipe glyph used by
+     * every content row. Strikethrough supplies the horizontal crossbar, so
+     * resource-pack differences between box-junction and pipe glyphs cannot
+     * shift the header columns by a pixel.
+     */
+    private static Text renderHeaderSeparator(int[] colWidths, Metrics metrics) {
+        MutableText separator = Text.empty();
+        Style style = Style.EMPTY.withFont(TABLE_FONT)
+                .withColor(RichChatConfig.INSTANCE.getColor("tableBody"));
+        Style junctionStyle = style.withStrikethrough(true);
+        separator.append(Text.literal("│").setStyle(junctionStyle));
+        for (int colWidth : colWidths) {
+            separator.append(metrics.rule(
+                    colWidth + metrics.spaceWidth() * 2, '│', style));
+            separator.append(Text.literal("│").setStyle(junctionStyle));
+        }
+        return separator;
     }
 
 

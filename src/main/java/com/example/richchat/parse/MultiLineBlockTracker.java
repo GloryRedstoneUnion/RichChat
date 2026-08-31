@@ -22,8 +22,8 @@ import java.util.List;
  *   <li>表格: 表头行 + 分隔行 + 数据行, 以非表格行结束.</li>
  * </ul>
  *
- * <p>状态机是单例的 (聊天 HUD 全局共享), 在累积期间所有消息都会被吞掉, 直到块闭合
- * 才一次性渲染输出.</p>
+ * <p>状态机是单例的 (聊天 HUD 全局共享). 代码块和 LaTeX 块在闭合前会累积；表格在
+ * 确认表头后按行返回实时快照，由客户端替换上一条快照消息.</p>
  *
  * <p><b>代码块嵌套规则:</b></p>
  * <ul>
@@ -52,6 +52,8 @@ public final class MultiLineBlockTracker {
         RENDER_BLOCK,
         /** 表格闭合, 渲染累积的表格为一条新消息, 当前非表格行按 NORMAL 处理. */
         RENDER_TABLE,
+        /** 表格仍在接收行, 返回当前快照而不处理额外消息. */
+        RENDER_TABLE_LIVE,
         /** 不在块中, 走正常渲染流程. */
         NORMAL,
         /** 暂存的首行不是表格, 先补显示首行, 当前行按 NORMAL 处理. */
@@ -68,7 +70,7 @@ public final class MultiLineBlockTracker {
         public final String source;
         /** true=LaTeX 块, false=代码块. 仅 {@link ActionType#RENDER_BLOCK} 时有效. */
         public final boolean isLatex;
-        /** 表格行内容 (消息体, 已剥离聊天前缀), 仅 {@link ActionType#RENDER_TABLE} 时有效. */
+        /** 表格行内容; 在最终或实时表格动作中有效. */
         public final List<String> tableBodies;
         /** 待补显示的 Text (FALLBACK_NORMAL 时有效). */
         public final Text flushBefore;
@@ -99,6 +101,10 @@ public final class MultiLineBlockTracker {
             return new Result(ActionType.RENDER_TABLE, null, null, false, tableBodies, null);
         }
 
+        public static Result renderTableLive(List<String> tableBodies) {
+            return new Result(ActionType.RENDER_TABLE_LIVE, null, null, false, tableBodies, null);
+        }
+
         public static Result fallbackNormal(Text flushBefore) {
             return new Result(ActionType.FALLBACK_NORMAL, null, null, false, null, flushBefore);
         }
@@ -112,7 +118,7 @@ public final class MultiLineBlockTracker {
     private Text pendingTableText;
     private String pendingTableBody;
 
-    // IN_TABLE: 累积表格行 (消息体, 已剥离聊天前缀)
+    // IN_TABLE: 累积表格行 (消息体, 已剥离聊天前缀), 每行返回实时快照
     private final List<String> tableBodyBuffer = new ArrayList<>();
 
     // IN_CODE: 代码块累积 (支持嵌套, 用栈记录各层语言)
@@ -236,7 +242,7 @@ public final class MultiLineBlockTracker {
             tableBodyBuffer.add(body);
             pendingTableText = null;
             pendingTableBody = null;
-            return Result.accumulate();
+            return Result.renderTableLive(List.copyOf(tableBodyBuffer));
         }
         // 不是表格, 把暂存的首行补显示, 当前行按 NORMAL
         Text flush = pendingTableText;
@@ -251,7 +257,7 @@ public final class MultiLineBlockTracker {
     private Result processInTable(Text message, String body) {
         if (TableRenderer.isTableRow(body)) {
             tableBodyBuffer.add(body);
-            return Result.accumulate();
+            return Result.renderTableLive(List.copyOf(tableBodyBuffer));
         }
         // 表格结束 (当前行非表格行)
         state = State.IDLE;

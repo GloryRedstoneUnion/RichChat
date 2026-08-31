@@ -105,10 +105,13 @@ class RendererTest {
 
         assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
                 tracker.process(header, headerBody).type);
-        assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
-                tracker.process(separator, separatorBody).type);
-        assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
-                tracker.process(body, dataBody).type);
+        MultiLineBlockTracker.Result confirmed = tracker.process(separator, separatorBody);
+        assertEquals(MultiLineBlockTracker.ActionType.RENDER_TABLE_LIVE, confirmed.type);
+        assertEquals(List.of("| Name | Value |", "|---|---|"), confirmed.tableBodies);
+        MultiLineBlockTracker.Result liveRow = tracker.process(body, dataBody);
+        assertEquals(MultiLineBlockTracker.ActionType.RENDER_TABLE_LIVE, liveRow.type);
+        assertEquals(List.of("| Name | Value |", "|---|---|", "| one | 1 |"),
+                liveRow.tableBodies);
 
         MultiLineBlockTracker.Result result = tracker.process(
                 Text.literal("[Survival] <Chat> # next"), "# next");
@@ -198,6 +201,22 @@ class RendererTest {
     }
 
     @Test
+    void liveTableRenderingOmitsOuterBorders() {
+        Text rendered = TableRenderer.renderLive(List.of(
+                "| Name | Value |",
+                "|---|---|",
+                "| one | 1 |"));
+        String[] rows = rendered.getString().split("\\n", -1);
+        assertEquals(3, rows.length);
+        assertTrue(rows[0].startsWith("│"));
+        assertTrue(rows[1].startsWith("│"));
+        assertTrue(rows[2].startsWith("│"));
+        assertFalse(rendered.getString().contains("┌"));
+        assertFalse(rendered.getString().contains("└"));
+        assertFalse(rows[1].contains("┼"));
+    }
+
+    @Test
     void tableTreatsEscapedPipeAsCellContent() {
         Text rendered = TableRenderer.render(List.of(
                 "| Name | Value |",
@@ -263,6 +282,14 @@ class RendererTest {
         assertEquals(rowWidth, pixelWidth(rows[0]));
         assertEquals(rowWidth, pixelWidth(rows[2]));
         assertEquals(rowWidth, pixelWidth(rows[3]));
+
+        Text live = TableRenderer.renderLiveWithMetrics(
+                List.of("| Name | Value |", "|---|---|", "| one | 1 |"), pixelMetrics);
+        String[] liveRows = live.getString().split("\\n", -1);
+        assertEquals(3, liveRows.length);
+        int liveWidth = pixelWidth(liveRows[0]);
+        assertEquals(liveWidth, pixelWidth(liveRows[1]));
+        assertEquals(liveWidth, pixelWidth(liveRows[2]));
     }
 
     @Test
@@ -282,6 +309,24 @@ class RendererTest {
         assertFalse(rule.getSiblings().get(0).getStyle().isStrikethrough());
         assertTrue(rule.getSiblings().get(1).getStyle().isStrikethrough());
         assertTrue(rule.getSiblings().get(2).getStyle().isStrikethrough());
+    }
+
+    @Test
+    void tableTrackerEmitsLiveSnapshotsForSeparatorAndRows() {
+        MultiLineBlockTracker tracker = new MultiLineBlockTracker();
+        Text header = Text.literal("| Name | Value |");
+        Text separator = Text.literal("|---|---|");
+        Text body = Text.literal("| one | 1 |");
+
+        assertEquals(MultiLineBlockTracker.ActionType.ACCUMULATE,
+                tracker.process(header, header.getString()).type);
+        MultiLineBlockTracker.Result confirmed = tracker.process(separator, separator.getString());
+        assertEquals(MultiLineBlockTracker.ActionType.RENDER_TABLE_LIVE, confirmed.type);
+        assertEquals(List.of("| Name | Value |", "|---|---|"), confirmed.tableBodies);
+
+        MultiLineBlockTracker.Result row = tracker.process(body, body.getString());
+        assertEquals(MultiLineBlockTracker.ActionType.RENDER_TABLE_LIVE, row.type);
+        assertEquals(List.of("| Name | Value |", "|---|---|", "| one | 1 |"), row.tableBodies);
     }
 
     private static int pixelWidth(String value) {

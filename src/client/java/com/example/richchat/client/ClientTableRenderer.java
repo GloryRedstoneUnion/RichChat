@@ -19,9 +19,18 @@ public final class ClientTableRenderer {
     }
 
     public static Text render(List<String> lines) {
+        return render(lines, true);
+    }
+
+    /** Render an in-progress table snapshot without outer boundary lines. */
+    public static Text renderLive(List<String> lines) {
+        return render(lines, true);
+    }
+
+    private static Text render(List<String> lines, boolean live) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.textRenderer == null) {
-            return TableRenderer.render(lines);
+            return live ? TableRenderer.renderLive(lines) : TableRenderer.render(lines);
         }
 
         TextRenderer renderer = client.textRenderer;
@@ -56,6 +65,8 @@ public final class ClientTableRenderer {
                 return TableRenderer.renderPixelRule(advance, style, SPACING_FONT);
             }
         };
-        return TableRenderer.renderWithMetrics(lines, metrics);
+        return live
+                ? TableRenderer.renderLiveWithMetrics(lines, metrics)
+                : TableRenderer.renderWithMetrics(lines, metrics);
     }
 }

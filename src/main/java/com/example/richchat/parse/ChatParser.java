@@ -396,13 +396,13 @@ public final class ChatParser {
      * 渲染多行 Markdown 表格.
      *
      * <p>输入为表格的所有行 (表头行 + 分隔行 + 数据行), 内部调用
-     * {@link TableRenderer#render} 进行对齐渲染.</p>
+     * {@link TableRenderer#renderLive} 进行无上下外框的对齐渲染.</p>
      *
      * @param tableBodies 表格行列表 (每行为已剥离聊天前缀的消息体).
-     * @return 渲染后的 Text (盒式表格; 客户端入口会进一步使用像素测量).
+     * @return 渲染后的 Text (实时表格布局; 客户端入口会进一步使用像素测量).
      */
     public static Text renderTable(java.util.List<String> tableBodies) {
-        return TableRenderer.render(tableBodies);
+        return TableRenderer.renderLive(tableBodies);
     }
 
     /**

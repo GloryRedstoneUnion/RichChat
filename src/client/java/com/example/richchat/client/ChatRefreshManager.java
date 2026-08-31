@@ -149,7 +149,7 @@ public final class ChatRefreshManager {
         if (source != null) {
             String[] lines = source.split("\\n", -1);
             if (lines.length >= 2 && TableRenderer.isTableSeparator(lines[1])) {
-                return ClientTableRenderer.render(java.util.Arrays.asList(lines));
+                return ClientTableRenderer.renderLive(java.util.Arrays.asList(lines));
             }
         }
         return ChatParser.parse(original);
