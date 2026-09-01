@@ -26,15 +26,15 @@ bin/
 # macOS
 .DS_Store
 
-# Fabric Loom 缓存
+# Fabric Loom cache
 loom-cache/
 
-# 其他
+# Miscellaneous
 *.log
 *.tmp
 *.bak
 
-# Loom 构建副产物 (会被复制到根目录)
+# Loom build byproducts copied to the repository root
 /client-*-refmap.json
 /richchat.client.mixins.json
 /richchat.mixins.json

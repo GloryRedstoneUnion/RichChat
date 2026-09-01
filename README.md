@@ -1,134 +1,140 @@
 # RichChat
 
-## 1.2.1
+RichChat is a client-side Fabric mod for Minecraft 1.20.1 that renders Markdown and LaTeX-inspired syntax directly in the vanilla chat HUD. Rendered messages retain their original source for hover inspection, and existing chat history can be re-rendered when the feature is toggled or its colors change.
 
-- 修复 Minecraft 聊天栏 Markdown 表格横向边框的像素级错位，确保横线精确落在两侧 junction 之间。
-- 表格在确认表头分隔行后立即显示，后续数据行原位更新；取消上下外框并统一表头分隔线的像素位置。
-- 使用 Minecraft 原生 `uniform` 等宽字体对齐代码块和 Markdown 表格。
-- 采用 VS Code 风格的代码、链接、标题和公式颜色，并补充颜色命令提示。
-- 增加 `\max`、`\min`、`\lim` 和三角函数等常见 LaTeX 运算符。
+Latest release: [RichChat 1.2.1](https://github.com/GloryRedstoneUnion/RichChat/releases/tag/v1.2.1)
 
-> Minecraft Fabric 模组 —— 在聊天栏中渲染 **Markdown** 与 **LaTeX**，鼠标悬停查看原始源码。
+## Features
 
-## 项目简介
+- Markdown styles: bold, italic, strikethrough, inline code, links, headings, lists, quotes, fenced code blocks, and tables.
+- LaTeX-to-Unicode conversion: scripts, roots, fractions, Greek letters, mathematical symbols, and common operators.
+- VS Code-inspired semantic colors, configurable with strict `#RRGGBB` values.
+- Source hover: inspect the original unrendered message without losing vanilla styles or interactions.
+- Live tables: the table appears as soon as its separator row confirms the syntax, and later rows update the same HUD entry.
+- Pixel-aligned table layout using Minecraft's actual client font metrics.
+- Multi-message fenced code and LaTeX blocks, including stack-based nested code fences.
+- Client-side commands with category and hexadecimal color suggestions.
+- Lossless toggling: team colors, click events, hover events, and chat prefixes are preserved.
 
-RichChat 是一个客户端 Fabric 模组，它把玩家发送的聊天消息中的 Markdown 标记和 LaTeX 公式实时渲染为 Minecraft 原生 Text 样式，同时保留原始源码供鼠标悬停查看。让聊天栏也能像富文本编辑器一样显示精美格式。
+## Requirements
 
-### 核心特性
-
-- **Markdown 渲染**：粗体、斜体、删除线、行内代码、链接、标题、列表、引用、表格、代码块
-- **LaTeX 渲染**：将常见 LaTeX 公式转为 Unicode 近似字符（上下标、希腊字母、数学符号和常见运算符）
-- **悬停看源码**：对每条已渲染消息悬停时显示其原始未渲染文本
-- **多行块支持**：跨消息累积多行代码块、多行 LaTeX 块（`$$...$$`）、Markdown 表格
-- **嵌套代码块**：外层 ```` ```markdown ```` 代码块内可包含 ```` ```python ```` 内层代码块，正确匹配闭合
-- **客户端命令**：`/richchat toggle|status|reload|color`，状态持久化到配置文件
-- **颜色配置**：为 Markdown、LaTeX、代码、链接、标题、引用和表格分别设置 `#RRGGBB` 颜色
-- **即时刷新**：切换开关时已存在的消息立即重新渲染或还原为源码
-- **零开销**：关闭时跳过所有转换逻辑，无性能损耗
-
-## 环境要求
-
-| 依赖 | 版本 |
-|------|------|
+| Dependency | Version |
+| --- | --- |
 | Minecraft | 1.20.1 |
-| Fabric Loader | ≥ 0.15.11 |
+| Fabric Loader | 0.15.11 or newer |
 | Fabric API | 0.92.2+1.20.1 |
 | Java | 17 |
-| Yarn Mappings | 1.20.1+build.10 |
-| Loom Plugin | 1.6-SNAPSHOT |
+| Yarn mappings | 1.20.1+build.10 |
+| Fabric Loom | 1.6 |
 
-## 安装
+## Installation
 
-### 方式一：使用预构建 jar
+1. Download `RichChat-1.2.1.jar` from the [v1.2.1 release](https://github.com/GloryRedstoneUnion/RichChat/releases/tag/v1.2.1).
+2. Place the JAR in `.minecraft/mods/`.
+3. Install Fabric API `0.92.2+1.20.1` in the same directory.
+4. Start Minecraft 1.20.1 with Fabric Loader.
 
-1. 下载 `RichChat-1.2.1.jar`
-2. 将其放入 `.minecraft/mods/` 目录
-3. 确保 `fabric-api-0.92.2+1.20.1.jar` 也已在 mods 目录
-4. 启动 Minecraft 1.20.1（Fabric Loader）
+## Usage
 
-### 方式二：从源码构建
+Send Markdown or LaTeX syntax as a normal chat message.
 
-```bash
-git clone <repo-url>
-cd RichChat
-./gradlew build
-# 产物: build/libs/RichChat-1.2.1.jar
+### Markdown
+
+```text
+**bold** *italic* ~~strikethrough~~ `inline code`
+[Minecraft](https://minecraft.net)
+# Heading
+- List item
+> Quote
 ```
 
-## 使用方法
+Fenced code blocks can span multiple chat messages:
 
-### 聊天栏渲染
-
-直接在聊天栏发送含 Markdown 或 LaTeX 标记的消息：
-
-```
-**粗体** *斜体* ~~删除~~ `代码`
-```
-
-支持 LaTeX：
-
-```
-$x^2 + \frac{1}{2}$        → x² + 1/2
-$\sqrt{x}$                 → √x
-$\alpha + \beta = \gamma$  → α + β = γ
-```
-
-支持多行代码块：
-
-````
+````text
 ```python
 def greet(name):
     return f"Hello, {name}!"
 ```
 ````
 
-支持多行公式块：
+### LaTeX
 
+```text
+$x^2 + \frac{1}{2}$
+$\sqrt{x}$
+$\alpha + \beta = \gamma$
+$D = \max(0, h - 3)$
 ```
+
+Representative output:
+
+| Source | Output |
+| --- | --- |
+| `x^2` | `x²` |
+| `x_1` | `x₁` |
+| `\sqrt{x}` | `√x` |
+| `\sqrt[n]{x}` | `ⁿ√x` |
+| `\frac{a}{b}` | `a/b` |
+| `\alpha` | `α` |
+| `\beta` | `β` |
+| `\gamma` | `γ` |
+| `\pi` | `π` |
+| `\theta` | `θ` |
+| `\infty` | `∞` |
+| `\sum` | `Σ` |
+| `\int` | `∫` |
+| `\times` | `×` |
+| `\pm` | `±` |
+| `\leq` | `≤` |
+| `\geq` | `≥` |
+| `\partial` | `∂` |
+| `\nabla` | `∇` |
+
+Block formulas can also span messages:
+
+```text
 $$
 \sum_{i=1}^{n} \frac{1}{i^2} = \frac{\pi^2}{6}
 $$
 ```
 
-支持 Markdown 表格：
+### Tables
 
+```text
+| Function | Integral | Field |
+| :---: | :---: | :---: |
+| $e^{-x^2}$ | $\sqrt{\pi}$ | Probability |
+| $x^2 e^{-x}$ | $2$ | Quantum mechanics |
 ```
-| 函数 | 积分结果 | 应用领域 |
-|:---:|:---:|:---:|
-| $e^{-x^2}$ | $\sqrt{\pi}$ | 概率论 |
-| $x^2 e^{-x}$ | $2$ | 量子力学 |
+
+The first row is held briefly until the separator row confirms that the input is a Markdown table. The header then appears immediately, and each data row replaces the same in-progress HUD snapshot. The rendered layout omits outer top and bottom borders. Its header separator and content rows use the same vertical glyph, while column padding is calculated from Minecraft's client-side pixel measurements.
+
+Markdown and supported LaTeX syntax are rendered inside table cells. Escaped pipes such as `left\|right` remain cell content.
+
+### Commands
+
+| Command | Description |
+| --- | --- |
+| `/richchat toggle` | Enable or disable rendering and refresh existing messages. |
+| `/richchat status` | Show the current rendering and source-hover state. |
+| `/richchat reload` | Reload the JSON configuration. |
+| `/richchat color` | List all current semantic colors. |
+| `/richchat color <category> <#RRGGBB>` | Set a color and refresh chat immediately. |
+| `/richchat color reset <category\|all>` | Restore one category or all categories to defaults. |
+
+Available categories:
+
+```text
+plain bold italic strikethrough list inlineCode codeBlock link
+heading1 heading2 heading3 heading4 heading5 heading6
+quote latex tableHeader tableBody
 ```
 
-> 表格单元格内的 LaTeX 也会被渲染。
+Commands are registered on the client and do not require server permissions. Invalid categories and color values are rejected before execution, and Brigadier provides suggestions while typing.
 
-表格会转换为紧凑布局，Markdown 的 `|---|` 对齐分隔行只用于解析，不会原样显示在聊天栏中；
-确认分隔行后表头会立即出现，后续数据行原位更新。布局不绘制上下外框，表头分隔线与内容行使用
-相同的竖线 glyph，并按 Minecraft 客户端实际字体像素宽度补齐。
+## Configuration
 
-### 鼠标悬停
-
-将鼠标悬停在任何已渲染的消息上，会显示该消息的原始未渲染源码（带标记的原文），便于查看格式细节。
-
-### 命令系统
-
-| 命令 | 说明 |
-|------|------|
-| `/richchat toggle` | 开关渲染功能（已存在消息会即时刷新） |
-| `/richchat status` | 查看当前渲染与悬停状态 |
-| `/richchat reload` | 重新加载配置文件 |
-| `/richchat color` | 查看所有语义颜色 |
-| `/richchat color <category> <#RRGGBB>` | 设置颜色并立即刷新聊天 |
-| `/richchat color reset <category\|all>` | 恢复默认颜色 |
-
-可用类别包括 `plain`、`bold`、`italic`、`strikethrough`、`list`、`inlineCode`、`codeBlock`、
-`link`、`heading1`-`heading6`、`quote`、`latex`、`tableHeader` 和 `tableBody`；输入命令时会自动补全，
-类别和值不合法会在执行前显示为错误。
-
-命令仅注册在客户端，无需服务端权限。
-
-### 配置文件
-
-配置文件位于 `.minecraft/config/richchat.json`：
+RichChat stores its settings in `.minecraft/config/richchat.json`:
 
 ```json
 {
@@ -157,198 +163,124 @@ $$
 }
 ```
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `enabled` | bool | `true` | 是否启用渲染 |
-| `showSourceOnHover` | bool | `true` | 是否在悬停时显示原始源码 |
-| `colors` | object | 见示例 | 各语义类别的 `#RRGGBB` 颜色 |
+Colors must use exactly six hexadecimal digits after `#`. Lowercase values are normalized to uppercase. Invalid values fall back to defaults, and older configuration files receive any missing color entries automatically.
 
-配置在游戏重启后保留。
+## Rendering Behavior
 
-## 功能详解
+### Chat prefixes and styles
 
-### Markdown 支持范围
+Vanilla chat commonly uses `TranslatableText(chat.type.text, sender, message)`. RichChat extracts the message argument directly instead of parsing the flattened display string, so sender prefixes are preserved and a `>` in `<sender>` is not mistaken for a Markdown quote. It also recognizes common server layouts that add channel or team prefixes or flatten the component into literal text.
 
-| 语法 | 渲染效果 |
-|------|---------|
-| `**text**` | **粗体** |
-| `*text*` | *斜体* |
-| `~~text~~` | ~~删除线~~ |
-| `` `code` `` | VS Code 风格颜色 + Minecraft 等宽代码 |
-| `[text](url)` | 可点击链接 + 下划线 |
-| `# 标题` | 蓝色粗体 |
-| `## 标题` | 绿色粗体 |
-| `### 标题` | 黄色粗体 |
-| `- item` | • 前缀列表 |
-| `> quote` | 灰色缩进引用 |
-| `` ```lang ... ``` `` | VS Code 风格颜色 + 等宽多行代码块 |
-| `\| table \|` | 等宽字体盒式表格（隐藏 Markdown 分隔行） |
+The parser retains each original `Style`, including team colors, click events, hover events, and fonts. The unmodified component tree is associated with its rendered HUD entry so disabling and re-enabling rendering remains lossless.
 
-### LaTeX 支持范围
+### Multi-message state
 
-**定界符**：
-- 行内公式：`$...$`
-- 块级公式：`$$...$$`
-- 支持 `\$` 转义
+| Block | Start | End | Display behavior |
+| --- | --- | --- | --- |
+| Fenced code | `` ```lang `` | `` ``` `` | Buffered until the matching fence closes. |
+| LaTeX block | `$$` | `$$` | Buffered until the closing delimiter arrives. |
+| Markdown table | Header plus separator | First non-table row | Displayed and updated live after confirmation. |
 
-**转换规则**：
+Nested code fences use a stack: a language fence opens a level, and a bare fence closes the current level. An unmatched fence or malformed formula degrades to source text instead of silently dropping content.
 
-| LaTeX | Unicode |
-|-------|---------|
-| `x^2` | `x²` |
-| `x_1` | `x₁` |
-| `\sqrt{x}` | `√x` |
-| `\sqrt[n]{x}` | `ⁿ√x` |
-| `\frac{a}{b}` | `a/b` |
-| `\alpha` | `α` |
-| `\beta` | `β` |
-| `\gamma` | `γ` |
-| `\pi` | `π` |
-| `\theta` | `θ` |
-| `\infty` | `∞` |
-| `\sum` | `Σ` |
-| `\int` | `∫` |
-| `\times` | `×` |
-| `\pm` | `±` |
-| `\leq` | `≤` |
-| `\geq` | `≥` |
-| `\cdot` | `·` |
-| `\partial` | `∂` |
-| `\nabla` | `∇` |
-| `\propto` | `∝` |
+### Performance
 
-复杂公式（矩阵、多行公式等）保留原始文本。
+- A `ThreadLocal` re-entry guard prevents recursive processing when the mixin adds transformed messages back to `ChatHud`.
+- Rendering is bypassed while disabled.
+- The block tracker resets when rendering is disabled.
+- Existing messages are refreshed in place instead of being resent through the parser pipeline.
 
-### 多行块状态机
+## Architecture
 
-由于 vanilla 聊天每行都是独立消息，RichChat 维护了一个跨消息状态机来识别多行块：
-
-| 块类型 | 开始标记 | 结束标记 | 备注 |
-|--------|---------|---------|------|
-| 代码块 | `` ```lang `` | `` ``` `` | 支持嵌套，按栈匹配 |
-| LaTeX 块 | `$$` | `$$` | 跨消息累积 |
-| 表格 | 表头行 + 分隔行 | 非表格行 | 表头 + 分隔行 + 数据行 |
-
-表格识别使用 look-ahead：首行暂存，第二行若是分隔行（如 `|:---:|`）才确认进入表格模式；否则把暂存的首行作为普通消息补显示。
-
-### 性能优化
-
-- **ThreadLocal 重入保护**：避免 Mixin 重新调用 `addMessage` 导致无限递归
-- **关闭时零开销**：`enabled=false` 时 Mixin 直接放行原调用，不做任何字符串处理
-- **状态机重置**：关闭渲染时同步重置多行块状态机，避免遗留状态干扰
-
-## 技术架构
-
-### 模块结构
-
-```
+```text
 com.example.richchat
-├── RichChatMod                      # 模组入口
-├── config
-│   └── RichChatConfig               # 配置读写 (Gson)
-├── parse
-│   ├── ChatParser                   # 消息解析主入口
-│   ├── MarkdownRenderer             # Markdown → Text
-│   ├── LatexUnicodeRenderer         # LaTeX → Unicode
-│   ├── TableRenderer                # 表格 → 对齐 Text
-│   └── MultiLineBlockTracker        # 多行块状态机
-├── render
-│   └── SourceHoverHelper            # 悬停事件附加
-└── client
-    ├── RichChatClient               # 客户端入口
-    ├── ChatRefreshManager           # 切换开关时刷新消息
-    ├── command
-    │   └── RichChatCommand          # /richchat 命令
-    └── mixin
-        ├── ChatHudMixin             # 注入 addMessage
-        └── ChatHudAccessor          # 暴露 messages 字段
+|-- RichChatMod
+|-- config
+|   |-- RichChatConfig
+|   `-- RichChatColors
+|-- parse
+|   |-- ChatParser
+|   |-- MarkdownRenderer
+|   |-- LatexUnicodeRenderer
+|   |-- TableRenderer
+|   `-- MultiLineBlockTracker
+|-- render
+|   `-- SourceHoverHelper
+`-- client
+    |-- RichChatClient
+    |-- ChatRefreshManager
+    |-- ClientTableRenderer
+    |-- command
+    |   `-- RichChatCommand
+    `-- mixin
+        |-- ChatHudMixin
+        `-- ChatHudAccessor
 ```
 
-### 关键设计
+`TableRenderer` owns table parsing and semantic layout. `ClientTableRenderer` supplies real `TextRenderer` measurements and exact one-pixel spacing glyphs. `ChatHudMixin` owns streaming table snapshots and message ingress, while `ChatRefreshManager` reconstructs displayed history after configuration changes.
 
-**聊天前缀识别**：vanilla 聊天消息是 `TranslatableText(chat.type.text, sender, message)`，RichChat 直接从 `getArgs()` 取 sender 和 message，避免解析字符串。`<sender> ` 前缀原样拼接，不参与 Markdown 渲染，因此 `>` 不会被误识别为引用标记。
+## Building and Testing
 
-**样式保留**：用 `Text.visit(StyledVisitor, Style)` 展开 TranslatableText，对每个字符段保留其原始 Style（含 team 染色），渲染后的子节点继承该样式。
+The build uses Java 17 and the checked-in Gradle wrapper:
 
-**悬停源码反推**：渲染时把原始 source 字符串放进 `HoverEvent(SHOW_TEXT, Text.literal(source))`。切换开关时通过 `content().getStyle().getHoverEvent().getValue(SHOW_TEXT).getString()` 反推 source，重新渲染替换。
-
-**嵌套代码块**：用 `Deque<String> codeFenceStack` 记录嵌套层级。```` ```lang ```` 入栈，```` ``` ```` 出栈，栈空时才真正闭合。这样外层 ```` ```markdown ```` 内的 ```` ```python ... ``` ```` 不会误闭合外层。
-
-## 构建配置
-
-### 国内镜像源
-
-`settings.gradle` 与 `build.gradle` 中已配置国内镜像，首次构建无需科学上网：
-
-| 镜像 | 用途 |
-|------|------|
-| 阿里云 Maven | 主依赖仓库 |
-| 阿里云 Google 镜像 | Google 仓库 |
-| 腾讯云 Maven | 备选仓库 |
-| BMCLAPI | Minecraft 版本清单与资产 |
-| 腾讯云 Gradle | Gradle Wrapper 下载 |
-
-`build.gradle` 中 Loom 配置：
-
-```groovy
-loom {
-    splitEnvironmentSourceSets()
-    customMinecraftManifest = "https://bmclapi2.bangbang93.com/version/1.20.1/json"
-    mods {
-        "richchat" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
-}
+```bash
+./gradlew test --no-daemon
+./gradlew build --no-daemon
 ```
 
-### JDK 配置
+Artifacts are written to:
 
-`gradle.properties` 中显式指定 JDK 17 路径（如系统未自动识别）：
-
-```properties
-org.gradle.java.home=C:/Program Files/Java/jdk-17
+```text
+build/libs/RichChat-1.2.1.jar
+build/libs/RichChat-1.2.1-sources.jar
 ```
 
-## 测试用例
+The Gradle configuration includes Aliyun, Tencent Cloud, Fabric, Maven Central, and BMCLAPI endpoints to improve dependency availability in mainland China.
 
-### 功能测试
+## Release History
 
-| 输入 | 预期输出 |
-|------|---------|
-| `**粗体** *斜体* \`代码\`` | 粗体 + 斜体 + 深灰代码 |
-| `$x^2 + \frac{1}{2}$` | `x² + 1/2` |
-| `$$\sum_{i=1}^{n} \frac{1}{i^2}$$` | `Σ` 块级公式 |
-| `` ```python\ndef greet():\n    pass\n``` `` | VS Code 风格等宽代码块 |
-| `\| a \| b \|\n\|:---:\|\n\| 1 \| 2 \|` | 对齐表格 |
-| `\sqrt[n]{x}` | `ⁿ√x` |
-| `<player> > hello` | `>` 不被吞（聊天前缀识别） |
+### 1.2.1
 
-### 边界测试
+- Corrected the final pixel-level drift in Markdown table borders.
+- Aligned the header separator with content rows by using the same vertical glyph.
+- Displayed confirmed tables immediately and updated subsequent rows in place.
+- Removed the outer top and bottom table borders.
 
-| 输入 | 预期 |
-|------|------|
-| 空消息 | 不报错 |
-| `**未闭合` | 优雅降级为普通文本 |
-| `**粗体 *粗斜* **` | 正确嵌套渲染 |
-| `\$\$not a formula\$\$` | 转义后原样输出 |
-| 50 条连续消息 | 无明显卡顿 |
+### 1.2.0
 
-## 许可证
+- Reworked Markdown table parsing to hide separator syntax and produce a structured chat layout.
+- Added Markdown and LaTeX semantic colors inside table cells and client-side pixel width measurement.
+- Preserved malformed table input as source text.
+- Fixed rendering for messages with channel, team, nested component, and flattened literal prefixes.
+- Fixed stale rendered content after `/richchat toggle` and preserved prefixes when rendering was re-enabled.
 
-MIT License。详见 [LICENSE](file:///d:/MinecraftDev/Project/RichChat/LICENSE)。
+### 1.1.0
 
-## 已知限制
+- Added VS Code-inspired default colors, distinct heading colors, color commands, and suggestions.
+- Improved Markdown fences, escapes, nested spans, links, and cross-style parsing.
+- Improved LaTeX delimiters, malformed-input handling, common operators, fractions, roots, and scripts.
+- Added Unicode-aware table width handling for CJK, full-width characters, combining marks, and emoji.
 
-- LaTeX 仅支持基础符号转 Unicode，复杂公式（矩阵、多行公式）保留原文
-- 多行块跨消息累积时，期间所有消息都会被吞掉直到块闭合
-- 表格 look-ahead 暂存的首行若不是表格，会以普通消息补显示（顺序正确）
-- 切换开关时刷新消息会丢失原 TranslatableText 结构，反推的 source 是字符串形式
+### 1.0.0
 
-## 致谢
+- Added client-side Markdown and LaTeX rendering for Minecraft 1.20.1.
+- Added source hover, multi-message blocks, nested code fences, tables, client commands, and persistent configuration.
 
-- [FabricMC](https://fabricmc.net/) —— Fabric 模组加载器与 API
-- [Yarn Mappings](https://github.com/FabricMC/yarn) —— Minecraft 反混淆映射
-- [BMCLAPI](https://bmclapi2.bangbang93.com/) —— 国内 Minecraft 资产镜像
-- [阿里云 Maven](https://maven.aliyun.com/) —— 国内 Maven 镜像
+## Known Limitations
+
+- LaTeX is converted to a readable Unicode approximation; it is not full mathematical typesetting.
+- Matrices and unsupported complex formulas remain source text.
+- Fenced code and `$$` blocks are buffered until their closing delimiter arrives.
+- The first table candidate row is buffered until the following separator row confirms table syntax.
+- Very wide tables can still wrap at the configured Minecraft chat width.
+
+## License
+
+RichChat is available under the [MIT License](LICENSE).
+
+## Acknowledgements
+
+- [FabricMC](https://fabricmc.net/) for Fabric Loader and Fabric API.
+- [Yarn mappings](https://github.com/FabricMC/yarn) for readable Minecraft mappings.
+- [BMCLAPI](https://bmclapi2.bangbang93.com/) for mirrored Minecraft metadata and assets.
+- [Aliyun Maven](https://maven.aliyun.com/) and Tencent Cloud mirrors for dependency availability.

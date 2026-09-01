@@ -3,13 +3,13 @@
   "id": "richchat",
   "version": "${version}",
   "name": "RichChat",
-  "description": "在 Minecraft 原生聊天栏中以 VS Code 风格渲染 Markdown 与 LaTeX 公式，并通过悬停查看原始源码.",
+  "description": "Renders Markdown and LaTeX-inspired syntax in the vanilla Minecraft chat HUD with VS Code-inspired colors and source hover.",
   "authors": [
     "RichChat"
   ],
   "contact": {
-    "homepage": "https://github.com/example/richchat",
-    "sources": "https://github.com/example/richchat"
+    "homepage": "https://github.com/GloryRedstoneUnion/RichChat",
+    "sources": "https://github.com/GloryRedstoneUnion/RichChat"
   },
   "license": "MIT",
   "icon": "assets/richchat/icon.png",
