@@ -277,10 +277,3 @@ The Gradle configuration includes Aliyun, Tencent Cloud, Fabric, Maven Central, 
 ## License
 
 RichChat is available under the [MIT License](LICENSE).
-
-## Acknowledgements
-
-- [FabricMC](https://fabricmc.net/) for Fabric Loader and Fabric API.
-- [Yarn mappings](https://github.com/FabricMC/yarn) for readable Minecraft mappings.
-- [BMCLAPI](https://bmclapi2.bangbang93.com/) for mirrored Minecraft metadata and assets.
-- [Aliyun Maven](https://maven.aliyun.com/) and Tencent Cloud mirrors for dependency availability.
